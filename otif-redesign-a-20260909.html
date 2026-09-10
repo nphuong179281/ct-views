@@ -1,0 +1,1261 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OTIF Redesign Dark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* ============================================================================
+   OTIF — bản đề xuất, SÁNG + TỐI.
+
+   Bộ token bên dưới là bản copy nguyên văn của `06-design/ct-design-tokens.css`.
+   ĐỪNG sửa trực tiếp ở đây: sửa file token rồi copy lại, và chạy
+   `python 06-design/check-tokens.py` để chắc hai bên không trôi khỏi nhau.
+
+   MÀU: bỏ hết hue danh tính (blue/cyan/emerald/violet của 4 card KPI và 4
+   accent chart, trong đó 2 chart trùng amber). Toàn view chỉ dùng RAG so
+   target — xanh ≥ target, vàng ≥ target−5, đỏ dưới đó. Khối lượng là độ lớn,
+   không phải trạng thái, nên dùng --series-neutral.
+   ========================================================================== */
+/* ==========================================================================
+   KHỐI 1 · SÁNG
+   ========================================================================== */
+:root{
+  /* --- bề mặt, bốn bậc ------------------------------------------------- */
+  --s-page:#f7f9fc;                    /* ← --ct-surface-950 · nền trang    */
+  --s-group:#eef2f8;                   /* ← --ct-surface-900 · khung nhóm   */
+  --s-panel:#ffffff;                   /* ← --ct-card                       */
+  --s-card:#ffffff;                    /* ← --ct-card                       */
+  --s-hover:#f1f5fb;                   /* ← --ct-card-hover                 */
+
+  /* --- chữ -------------------------------------------------------------- */
+  --fg:#1f2937;                        /* ← --ct-txt                        */
+  --fg-dim:#4b5563;                    /* ← --ct-txt-dim                    */
+  --fg-mute:#6b7280;                   /* ← --ct-txt-mute                   */
+
+  /* --- đường kẻ, ô, dải ------------------------------------------------- */
+  --border:#e5e7eb;                    /* ← --ct-glass-border               */
+  --hairline:#eef1f5;                  /* ← --ct-hairline                   */
+  --cell-bg:#f7f9fc;                   /* ← --ct-cell-bg                    */
+  --cell-border:#e5e7eb;               /* ← --ct-cell-border                */
+  --track:#e5e7eb;                     /* ← --ct-track · rãnh của thanh     */
+  --row-total:#f2f7fd;                 /* ← --ct-total-bg · dòng Tổng       */
+  --row-kid:#fbfcfe;                   /* [LỆCH] dòng con của bảng cây      */
+  --th-bg:#f7f9fc;                     /* [LỆCH] nền tiêu đề bảng           */
+  /* --th-bg phải ĐẶC, không được dùng --cell-bg: tiêu đề bảng là sticky nên
+     nếu nền trong suốt thì các dòng sẽ chạy xuyên qua nó khi cuộn. */
+
+  /* --- tooltip ---------------------------------------------------------- */
+  --tip-bg:#081b3a;                    /* ← --ct-tooltip-bg                 */
+  --tip-fg:#ffffff;                    /* ← --ct-tooltip-fg                 */
+
+  /* --- màu chữ TRONG tooltip -------------------------------------------- */
+  /* GIỐNG NHAU ở cả hai theme, và cố tình lấy giá trị của bản TỐI. Lý do:
+     `--tip-bg` là #081b3a ở CẢ HAI theme (source dùng tooltip tối trên nền sáng),
+     nên chữ trong tooltip luôn nằm trên nền tối. Dùng `--series-*` của bản sáng
+     ở đây thì `#1d4ed8` trên `#081b3a` chỉ còn ~1,6:1 — không đọc được. */
+  --tip-blue:#60a5fa;
+  --tip-red:#fb7185;
+  --tip-green:#10b981;
+  --tip-violet:#a78bfa;
+  --tip-yellow:#fde047;
+  --tip-cyan:#22d3ee;
+  --tip-teal:#2dd4bf;
+  --tip-neutral:#8b9cb8;
+  /* Source dùng tooltip TỐI trên theme sáng. Vì vậy chữ trong tooltip phải
+     lấy --tip-fg, KHÔNG lấy --fg. Bản Alert đầu tiên dùng --fg nên nếu đổi
+     nền theo source mà quên chữ thì tooltip sẽ đen trên navy. */
+
+  /* --- alpha của card craft --------------------------------------------- */
+  --tint-a:12%;                        /* ← --ct-tint-a                     */
+  --edge-a:34%;                        /* ← --ct-edge-a                     */
+
+  /* --- độ nổi ----------------------------------------------------------- */
+  --lift:0 10px 15px -3px rgba(17,24,39,.08), 0 4px 6px -4px rgba(17,24,39,.08);
+  /* [LỆCH] Không có trong source: `--ct-cta-shadow` chỉ dành cho nút CTA,
+     không phải shadow chung của card. Giá trị này là thang shadow-lg của
+     Tailwind mà `chart-card.tsx` / `kpi-card.tsx` đang dùng qua class. */
+
+  /* --- màu tương tác ---------------------------------------------------- */
+  --brand:oklch(0.41 0.29 264);        /* ← --primary                       */
+  --brand-fg:oklch(0.985 0 0);         /* ← --primary-foreground            */
+  --brand-wash:color-mix(in srgb, var(--brand) 10%, transparent);
+  --row-hover:color-mix(in srgb, var(--brand) 5%, transparent);
+
+  /* --- màu nhấn thông tin ----------------------------------------------- */
+  --accent-blue:#1e88e5;               /* ← --ct-brand-blue                 */
+  --accent-blue-deep:#1565c0;          /* ← --ct-brand-blue-light           */
+  --accent-yellow:#ca8a04;             /* [LỆCH] không có trong source      */
+  /* Vàng TƯƠI, tách hẳn khỏi `--rag-warn` (#b45309 sáng / #f59e0b tối) vốn là
+     cam-hổ phách và đã mang nghĩa "cảnh báo". Dùng cho đường mục tiêu On-time,
+     nơi cần tách khỏi hai đường mục tiêu kia. Bản sáng phải là vàng ĐẬM
+     (#ca8a04, 3,4:1 trên trắng) — #fde047 trên nền trắng chỉ ~1,3:1, mất hút.
+     Đây là lý do đảo chiều độ sáng theo luật L4. */
+
+  /* --- lớp phủ trung tính ----------------------------------------------- */
+  --key-hi:rgba(17,24,39,.05);         /* nền chú giải khi được nhấn         */
+  --btn-hover:rgba(17,24,39,.045);     /* hover của nút chỉ có icon          */
+
+  /* --- RAG · mực, dùng cho CHỮ (cần 4,5:1) ------------------------------ */
+  --rag-good:#15803d;                  /* ← --rag-good-ink                  */
+  --rag-warn:#b45309;                  /* ← --rag-warning-ink               */
+  --rag-bad:#be123c;                   /* ← --rag-critical-ink              */
+  --rag-bad-soft:#e11d48;              /* ← --rag-critical-soft-ink         */
+  --rag-info:#1565c0;                  /* ← --rag-info-ink                  */
+
+  /* --- RAG · đốm, dùng cho MẢNG TÔ (chỉ cần 3:1) ------------------------ */
+  --dot-good:#22c55e;                  /* ← --rag-good-dot                  */
+  --dot-warn:#f59e0b;                  /* ← --rag-warning-dot               */
+  --dot-bad:#ef476f;                   /* ← --rag-critical-dot              */
+  /* L5 · mảng tô cần 3:1, CHỮ cần 4,5:1. Cặp ink/dot của source đã tách
+     đúng theo hai chuẩn này — dùng cặp có sẵn, đừng tự dìm màu xuống. */
+
+  /* --- chart ------------------------------------------------------------ */
+  --chart-ink:#424a53;                 /* ← --ct-chart-ink                  */
+  --chart-grid:rgba(100,116,139,.22);  /* [LỆCH] không có trong source      */
+  --series-neutral:#64748b;            /* ← --ct-series-neutral             */
+  --series-green:#047857;              /* ← --ct-series-green               */
+  --series-amber:#b45309;              /* ← --ct-series-amber               */
+  --series-blue:#1d4ed8;               /* ← --ct-series-blue                */
+  --series-cyan:#0e7490;              /* ← --ct-series-cyan                 */
+  --series-teal:#0f766e;
+  --series-rose:#be123c;               /* ← --ct-series-rose                */
+  --series-violet:#6d28d9;             /* ← --ct-series-violet              */
+
+  /* --- L3 · hue = trạng thái · độ nhạt = chặng -------------------------- */
+  /* [LỆCH] Thang này KHÔNG có trong theme.css — do luật L3 của phiên 1 đặt
+     ra. L4: bản sáng đảo chiều độ sáng, chặng 1 nhạt nhất thành ĐẬM VỪA,
+     vì #a7f3d0 trên #f7f9fc chỉ còn ~1,3:1. Mọi bậc ≥3:1 với nền theme này. */
+  --st-ok-1:#059669;   --st-ok-2:#047857;   --st-ok-3:#064e3b;
+  --st-risk-1:#d97706;
+  --st-late-1:#f43f5e; --st-late-2:#be123c; --st-late-3:#881337;
+  /* Chữ nhỏ trên nền sáng KHÔNG được dùng --st-risk-1 (#d97706 chỉ 3,5:1) —
+     dùng --rag-warn (#b45309, 4,8:1). Mảng tô thì --st-risk-1 hợp chuẩn. */
+
+  /* --- chrome ngoài hệ token -------------------------------------------- */
+  --avatar-bg:#e0e7ff;
+  --avatar-fg:#3730a3;
+}
+
+
+/* ==========================================================================
+   KHỐI 2 · TỐI — theo hệ điều hành, khi người dùng chưa chọn tay
+   ========================================================================== */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --s-page:#060a22;                  /* ← --ct-surface-950                */
+    --s-group:#0a1440;                 /* ← --ct-surface-900                */
+    --s-panel:#0a1440;                 /* ← --ct-surface-900                */
+    --s-card:#0c163a;                  /* ← --card                          */
+    --s-hover:#13245e;                 /* ← --ct-card-hover                 */
+    /* [LỆCH] `--ct-card` ở dark là rgba(12,22,58,.78) — trong suốt. Mockup
+       dùng #0c163a ĐẶC (giá trị của `--card`) để bốn bậc bề mặt tách rõ.
+       Đây chính là lỗi `bg-card/40` đã ghi ở phiên 1: khung nhóm trong suốt
+       làm các nhóm tan vào nền, và là nguyên nhân chính khiến bản dark
+       trông tệ hơn bản light. */
+
+    --fg:#ffffff;                      /* ← --ct-txt                        */
+    --fg-dim:rgba(255,255,255,.74);
+    --fg-mute:rgba(255,255,255,.52);
+    /* [LỆCH] Source đặt --ct-txt-dim và --ct-txt-mute đều = #ffffff ở dark,
+       tức không hạ cấp gì cả — token mất đúng chức năng mà tên nó hứa, và
+       ba cấp chữ dính thành một. Giữ alpha để có thứ bậc. Cả hai bậc vẫn
+       ≥7:1 trên #0a1440. */
+
+    --border:rgba(80,150,255,.14);     /* ← --ct-glass-border               */
+    --hairline:rgba(255,255,255,.06);  /* ← --ct-hairline                   */
+    --cell-bg:rgba(255,255,255,.03);   /* ← --ct-cell-bg                    */
+    --cell-border:rgba(255,255,255,.05); /* ← --ct-cell-border              */
+    --track:rgba(255,255,255,.1);      /* ← --ct-track                      */
+    --row-total:rgba(80,150,255,.06);  /* ← --ct-total-bg                   */
+    --row-kid:rgba(255,255,255,.015);
+    --th-bg:#0d1836;
+
+    --tip-bg:#081b3a;                  /* ← --ct-tooltip-bg                 */
+    --tip-fg:#ffffff;                  /* ← --ct-tooltip-fg                 */
+
+    --tip-blue:#60a5fa;
+    --tip-red:#fb7185;
+    --tip-green:#10b981;
+    --tip-violet:#a78bfa;
+    --tip-yellow:#fde047;
+    --tip-cyan:#22d3ee;
+    --tip-teal:#2dd4bf;
+    --tip-neutral:#8b9cb8;
+
+    --tint-a:10%;                      /* ← --ct-tint-a                     */
+    --edge-a:20%;                      /* ← --ct-edge-a                     */
+
+    --lift:0 8px 24px rgba(0,0,0,.45);
+
+    --brand:oklch(0.65 0.2 264);       /* ← --primary (.dark)               */
+    --brand-fg:oklch(0.985 0 0);       /* ← --primary-foreground (.dark)    */
+    --brand-wash:color-mix(in srgb, var(--brand) 16%, transparent);
+    --row-hover:color-mix(in srgb, var(--accent-blue) 7%, transparent);
+
+    --accent-blue:#4f8dff;             /* ← --ct-brand-blue (.dark)         */
+    --accent-blue-deep:#93b8ff;        /* ← --ct-brand-blue-light (.dark)   */
+    --accent-yellow:#fde047;
+
+    --key-hi:rgba(255,255,255,.08);
+    --btn-hover:rgba(255,255,255,.06);
+
+    --rag-good:#10b981;                /* ← --rag-good-ink                  */
+    --rag-warn:#f59e0b;                /* ← --rag-warning-ink               */
+    --rag-bad:#fb7185;                 /* ← --rag-critical-ink              */
+    --rag-bad-soft:#c2596b;            /* ← --rag-critical-soft-ink         */
+    --rag-info:#93b8ff;                /* ← --rag-info-ink                  */
+
+    --dot-good:#10b981;                /* ← --rag-good-dot                  */
+    --dot-warn:#f59e0b;                /* ← --rag-warning-dot               */
+    --dot-bad:#fb7185;                 /* ← --rag-critical-dot              */
+
+    --chart-ink:#ffffff;               /* ← --ct-chart-ink                  */
+    --chart-grid:rgba(148,163,184,.18);
+    --series-neutral:#8b9cb8;          /* ← --ct-series-neutral             */
+    --series-green:#10b981;            /* ← --ct-series-green               */
+    --series-amber:#f59e0b;            /* ← --ct-series-amber               */
+    --series-blue:#60a5fa;             /* ← --ct-series-blue                */
+    --series-cyan:#22d3ee;              /* ← --ct-series-cyan                 */
+    --series-teal:#2dd4bf;
+    --series-rose:#fb7185;             /* ← --ct-series-rose                */
+    --series-violet:#a78bfa;           /* ← --ct-series-violet              */
+
+    --st-ok-1:#a7f3d0;   --st-ok-2:#34d399;   --st-ok-3:#059669;
+    --st-risk-1:#fde68a;
+    --st-late-1:#fecdd3; --st-late-2:#fb7185; --st-late-3:#e11d48;
+
+    --avatar-bg:#1e2a5e;
+    --avatar-fg:#c7d2fe;
+  }
+}
+
+
+/* ==========================================================================
+   KHỐI 3 · TỐI — người dùng chọn tay, thắng cả cài đặt hệ điều hành
+   Cùng bộ 65 token và cùng giá trị với KHỐI 2.
+   ========================================================================== */
+:root[data-theme="dark"]{
+  --s-page:#060a22;
+  --s-group:#0a1440;
+  --s-panel:#0a1440;
+  --s-card:#0c163a;
+  --s-hover:#13245e;
+
+  --fg:#ffffff;
+  --fg-dim:rgba(255,255,255,.74);
+  --fg-mute:rgba(255,255,255,.52);
+
+  --border:rgba(80,150,255,.14);
+  --hairline:rgba(255,255,255,.06);
+  --cell-bg:rgba(255,255,255,.03);
+  --cell-border:rgba(255,255,255,.05);
+  --track:rgba(255,255,255,.1);
+  --row-total:rgba(80,150,255,.06);
+  --row-kid:rgba(255,255,255,.015);
+  --th-bg:#0d1836;
+
+  --tip-bg:#081b3a;
+  --tip-fg:#ffffff;
+
+  --tip-blue:#60a5fa;
+  --tip-red:#fb7185;
+  --tip-green:#10b981;
+  --tip-violet:#a78bfa;
+  --tip-yellow:#fde047;
+  --tip-cyan:#22d3ee;
+  --tip-teal:#2dd4bf;
+  --tip-neutral:#8b9cb8;
+
+  --tint-a:10%;
+  --edge-a:20%;
+
+  --lift:0 8px 24px rgba(0,0,0,.45);
+
+  --brand:oklch(0.65 0.2 264);
+  --brand-fg:oklch(0.985 0 0);
+  --brand-wash:color-mix(in srgb, var(--brand) 16%, transparent);
+  --row-hover:color-mix(in srgb, var(--accent-blue) 7%, transparent);
+
+  --accent-blue:#4f8dff;
+  --accent-blue-deep:#93b8ff;
+  --accent-yellow:#fde047;
+
+  --key-hi:rgba(255,255,255,.08);
+  --btn-hover:rgba(255,255,255,.06);
+
+  --rag-good:#10b981;
+  --rag-warn:#f59e0b;
+  --rag-bad:#fb7185;
+  --rag-bad-soft:#c2596b;
+  --rag-info:#93b8ff;
+
+  --dot-good:#10b981;
+  --dot-warn:#f59e0b;
+  --dot-bad:#fb7185;
+
+  --chart-ink:#ffffff;
+  --chart-grid:rgba(148,163,184,.18);
+  --series-neutral:#8b9cb8;
+  --series-green:#10b981;
+  --series-amber:#f59e0b;
+  --series-blue:#60a5fa;
+  --series-cyan:#22d3ee;
+  --series-teal:#2dd4bf;
+  --series-rose:#fb7185;
+  --series-violet:#a78bfa;
+
+  --st-ok-1:#a7f3d0;   --st-ok-2:#34d399;   --st-ok-3:#059669;
+  --st-risk-1:#fde68a;
+  --st-late-1:#fecdd3; --st-late-2:#fb7185; --st-late-3:#e11d48;
+
+  --avatar-bg:#1e2a5e;
+  --avatar-fg:#c7d2fe;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--s-page);color:var(--fg);
+  font:400 14px/1.5 Inter,"Segoe UI",system-ui,sans-serif;
+  font-variant-numeric:tabular-nums;
+}
+button{font-family:inherit}
+button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.spacer{flex:1}
+.shell{max-width:1560px;margin:0 auto;padding:0 0 30px}
+
+/* chrome */
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 16px}
+.iconbtn{width:32px;height:32px;border:none;background:none;border-radius:8px;color:var(--fg-dim);display:grid;place-items:center;cursor:pointer}
+.iconbtn:hover{background:var(--btn-hover);color:var(--fg)}
+.iconbtn.on{background:var(--brand);color:var(--brand-fg)}
+.themepick{display:inline-flex;padding:2px;gap:2px;background:var(--cell-bg);border:1px solid var(--border);border-radius:9px}
+.themepick button{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:none;border-radius:7px;background:none;color:var(--fg-mute);font-size:12px;font-weight:500;cursor:pointer}
+.themepick button svg{width:14px;height:14px}
+.themepick button:hover{color:var(--fg)}
+.themepick button[aria-pressed="true"]{background:var(--s-card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--avatar-bg);color:var(--avatar-fg);display:grid;place-items:center;font-size:12px;font-weight:600}
+
+.viewhead{display:flex;align-items:center;gap:12px;padding:2px 16px 9px}
+.viewicon{width:38px;height:38px;flex:none;border-radius:10px;background:color-mix(in srgb, var(--accent-blue) 14%, transparent);color:var(--accent-blue);display:grid;place-items:center}
+.viewtitle{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.hbtn{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;padding:8px 13px;border:1px solid var(--border);background:var(--s-card);color:var(--fg-dim);border-radius:8px;cursor:pointer}
+.hbtn:hover{background:var(--s-hover);color:var(--fg)}
+
+.filterbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 16px 9px}
+/* Hai nut phai di cung nhau. Truoc day .spacer{flex:1} de `Dat lai` o lai hang
+   tren con `Ap dung` roi xuong hang rieng. */
+.filterbar .btnpair{display:flex;align-items:center;gap:10px;margin-left:auto}
+.fsel{display:flex;align-items:baseline;gap:7px;padding:8px 12px;background:var(--s-card);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;color:var(--fg)}
+.fsel .lb{color:var(--fg-mute)}
+.fsel .vl{font-weight:600}
+.fsel .caret{color:var(--fg-mute);font-size:10px;margin-left:2px}
+.gobtn{display:inline-flex;align-items:center;gap:7px;background:var(--brand);color:var(--brand-fg);border:1px solid var(--brand);font-size:13px;font-weight:600;padding:8px 15px;border-radius:8px;cursor:pointer}
+.gobtn:hover{filter:brightness(1.12)}
+
+.tabbar{display:flex;align-items:center;gap:8px;padding:0 16px 9px;flex-wrap:wrap}
+.tabb{font-size:13px;font-weight:500;padding:8px 18px;border-radius:8px;border:1px solid transparent;background:none;color:var(--fg-dim);cursor:pointer}
+.tabb:hover{background:var(--btn-hover)}
+.tabb[aria-selected="true"]{background:var(--brand);color:var(--brand-fg);font-weight:600}
+.pillbtn{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;cursor:pointer;background:none}
+.pillbtn.tgt{border:1px solid color-mix(in srgb, var(--rag-info) 45%, transparent);color:var(--rag-info)}
+.pillbtn.exc{border:1px solid color-mix(in srgb, var(--rag-warn) 45%, transparent);color:var(--rag-warn)}
+.pillbtn .badge{background:var(--rag-warn);color:var(--s-page);border-radius:999px;padding:1px 7px;font-size:11px}
+
+/* Chú thích màu nằm TRONG nút `Mục tiêu` — nút này vốn đã có sẵn trên thanh tab
+   và chưa làm gì. Đặt ở đây thì luật đổ màu có một chỗ ở duy nhất mà KHÔNG tốn
+   thêm một pixel chiều cao nào của trang. */
+.tgtwrap{position:relative;display:inline-flex}
+.tgtpop{
+  position:absolute;top:calc(100% + 6px);right:0;z-index:40;min-width:264px;
+  padding:10px 12px;border-radius:10px;background:var(--s-card);
+  border:1px solid var(--border);box-shadow:var(--lift);
+  opacity:0;visibility:hidden;transform:translateY(-4px);
+  transition:opacity .14s ease,transform .14s ease,visibility .14s;
+  text-align:left;font-size:11.5px;color:var(--fg-dim);cursor:default;
+}
+.tgtwrap:hover .tgtpop,.tgtwrap:focus-within .tgtpop{opacity:1;visibility:visible;transform:none}
+.tgtpop h4{margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fg)}
+.tgtpop .band{display:flex;align-items:center;gap:8px;padding:3px 0}
+.tgtpop .band i{width:10px;height:10px;border-radius:3px;flex:none}
+.tgtpop .band b{color:var(--fg);font-weight:600}
+.tgtpop .tlist{margin-top:8px;padding-top:7px;border-top:1px solid var(--hairline);
+  display:flex;gap:12px;flex-wrap:wrap;font-size:11px}
+.tgtpop .tlist span b{color:var(--fg)}
+
+.body{container-type:inline-size;padding:0 16px;display:flex;flex-direction:column;gap:8px}
+.panel{container-type:inline-size;background:var(--s-panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--lift);overflow:hidden}
+.panel-hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--hairline)}
+.panel-hd h2{margin:0;font-size:14px;font-weight:600}
+.panel-hd .sub{font-size:12px;color:var(--fg-mute)}
+.panel-bd{padding:8px 12px}
+
+/* ============================ hàng 1: một thanh + các ô rời nhau ------- */
+/* container-type: .boxes / .rollups do CHINH khung nay, khong do viewport. */
+.split{
+  container-type:inline-size;
+  position:relative;border-radius:14px;padding:10px 12px;overflow:hidden;
+  background:var(--s-panel);border:1px solid var(--border);box-shadow:var(--lift);
+  display:grid;gap:12px;
+}
+
+/* thanh: ba đoạn RỜI NHAU cộng đúng khối lượng ĐẶT.
+   "Đã giao" là TỔNG CON của hai đoạn phải → vẽ bằng ngoặc dưới, không phải đoạn. */
+.capbar{display:grid;gap:0}
+.capbar .bar{display:flex;height:11px;gap:2px;border-radius:999px;overflow:hidden;background:var(--track)}
+.capbar .bar .seg{display:block;height:100%;min-width:8px;cursor:pointer;transition:opacity .16s ease,filter .16s ease}
+
+/* các ô rời nhau */
+/* Nhan dai nhat = `THIEU, KHONG GIAO` (17 ky tu) -> 2 dong o 11.5px in hoa can
+   ~80px, cong swatch 10 + gap 7 + padding 26 => the toi thieu ~140px.
+     5-up: 5x140 + 4x10 gap = 740  -> nguong 760px
+     3-up: 3x140 + 2x10 gap = 440  -> nguong 460px
+   Chuoi 5 moc la mot TRINH TU nen 5-up la dang doc dung nhat; 3-up chi la buoc lui. */
+.boxes{display:grid;column-gap:8px;row-gap:4px;grid-template-columns:repeat(2,1fr);grid-template-rows:1fr auto auto}
+@container (min-width:460px){.boxes{grid-template-columns:repeat(3,1fr)}}
+@container (min-width:760px){.boxes{grid-template-columns:repeat(5,1fr)}}
+.box{
+  position:relative;border-radius:11px;border:1px solid;padding:13px;overflow:hidden;min-width:0;
+  background:linear-gradient(135deg, color-mix(in srgb, var(--ink) var(--tint-a), transparent), color-mix(in srgb, var(--ink) calc(var(--tint-a)/3), transparent)), var(--s-card);
+  border-color:color-mix(in srgb, var(--ink) var(--edge-a), transparent);
+  /* subgrid: nam o dung chung ba track cua .boxes (nhan / so / phu) nen hang so
+     bang nhau bat ke nhan xuong 1 hay 2 dong. Truoc day align-content:start
+     xep tu tren xuong nen nhan dai la day so lech. */
+  grid-row:span 3;
+  display:grid;grid-template-rows:subgrid;cursor:pointer;padding:7px 10px;
+  transition:opacity .16s ease,transform .16s ease,box-shadow .16s ease,border-color .16s ease;
+}
+.box>.accent{position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(to right, color-mix(in srgb,var(--ink) 88%,transparent), color-mix(in srgb,var(--ink) 26%,transparent))}
+.box .k{display:flex;align-items:flex-start;gap:6px;align-self:start;font-size:11px;font-weight:700;line-height:1.3;text-transform:uppercase;letter-spacing:.03em;color:var(--fg)}
+.box .k i{margin-top:3px}
+.box .k i{width:10px;height:10px;border-radius:3px;background:var(--ink);flex:none}
+.box .v{font-size:19px;font-weight:700;line-height:1;color:var(--ink)}
+.box .s{font-size:11.5px;color:var(--fg-mute)}
+/* Hai mức khi trỏ vào một chip tỷ lệ: sáng = tham gia phân số · mờ = không.
+   Bỏ tầng "residual" của bản trước: nó giữ nguyên độ sáng nên người đọc
+   vẫn thấy như đang được nhấn, đúng như phản hồi.
+   Thanh chỉ sáng TỬ SỐ. Mẫu số thể hiện riêng:
+     mẫu = Đã giao  → ngoặc dưới thanh sáng lên
+     mẫu = CSE đặt  → viền quanh toàn thanh sáng lên
+   Nhờ vậy ba tỷ lệ có ba dấu hiệu khác nhau trên cùng một thanh. */
+.box.linked{transform:translateY(-3px);border-color:var(--ink);box-shadow:0 0 0 2px color-mix(in srgb, var(--ink) 66%, transparent), var(--lift)}
+.seg.linked{filter:brightness(1.16) saturate(1.06)}
+.rollup.linked{border-color:var(--ink);box-shadow:0 0 0 2px color-mix(in srgb, var(--ink) 45%, transparent)}
+/* Da BO `.bar.denom`: vong xam quanh ca thanh chi hien khi tro vao % In-full va
+   % OTIF (hai ty le co mau so = CSE dat) nen trong nhu mot loi khong dong nhat.
+   Giu NGOAC — do la dau hieu rieng cua % On-time (mau so = Da giao); bo ca hai
+   thi On-time va OTIF sang cung mot doan, khong con phan biet duoc. */
+.dimmed{opacity:.28}
+
+/* hai con gộp: % On-time và % In-full */
+.rollups{display:grid;column-gap:8px;row-gap:7px;grid-template-columns:1fr;grid-template-rows:auto auto auto}
+@container (min-width:700px){.rollups{grid-template-columns:repeat(3,1fr)}}
+/* subgrid: ba chip dung chung ba track (tieu de+so / thanh / thang do). Truoc day
+   `% ON-TIME` va `% IN-FULL` xuong 2 dong con `% OTIF` mot dong, nen so va thanh
+   cua chip OTIF nam cao hon hai chip kia. */
+.rollup{
+  grid-row:span 3;
+  border-radius:12px;border:1px solid var(--border);background:var(--s-card);padding:9px 12px;
+  display:grid;grid-template-rows:subgrid;cursor:pointer;transition:border-color .16s ease,opacity .16s ease,box-shadow .16s ease;
+}
+.rollup .top{display:flex;align-items:baseline;gap:12px}
+/* nowrap: ba nhan nay ngan va co dinh (% On-time / % In-full / % OTIF), xuong dong
+   la khong bao gio dung y. Subgrid o tren van lo phan can hang neu co ngoai le. */
+.rollup .nm{white-space:nowrap;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--fg)}
+.rollup .v{margin-left:auto;font-size:clamp(24px, 2.8cqi, 33px);font-weight:700;line-height:.95;letter-spacing:-.03em;color:var(--ink)}
+.rollup .track{position:relative;height:11px;border-radius:999px;background:var(--track);overflow:visible}
+.rollup .fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--ink)}
+.rollup .mk{position:absolute;top:-5px;bottom:-5px;width:3px;background:var(--fg);border-radius:2px}
+.rollup .sc{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:var(--fg-mute)}
+.rollup .sc .tgt{font-size:13px;font-weight:700;color:var(--fg)}
+
+/* ============================================= Metrics 5 panel */
+.dims{display:grid;gap:1px;background:var(--hairline)}
+.dim-rows{display:flex;flex-direction:column;gap:5px}
+/* Nhan khu vuc dai nhat THAT tren server = `North East - North West` (23 ky tu),
+   ~150px o 12.5px semibold, cong pct 45 + gap 8 + padding 18+2 => panel min ~240px.
+     5-up: 5x240 + 4x1 gap = 1204 -> nguong 1210px (khong phai 1340)
+     2-up: 2x240 = 480           -> nguong 500px */
+@container (min-width:500px){.dims{grid-template-columns:repeat(2,1fr)}}
+@container (min-width:1210px){.dims{grid-template-columns:repeat(5,1fr)}}
+/* flex-column + .viewall{margin-top:auto}: link `Xem tat ca` ghim xuong day nen
+   5 khung luon ket thuc cung mot duong, du so dong khac nhau. */
+.dim{background:var(--s-panel);padding:8px 10px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.dim-hd{display:flex;align-items:baseline;gap:8px}
+.dim-hd .nm{font-size:10.5px;font-weight:700;letter-spacing:.085em;text-transform:uppercase;color:var(--fg-dim)}
+.dim-hd .ct{margin-left:auto;font-size:11px;color:var(--fg-mute)}
+/* grid-template-rows co dinh 3 dong: khong dong nao co the wrap thanh 4 dong nen
+   moi dong cao bang nhau va 5 khung deu nhau. Truoc day `-x CSE` nam trong .l2
+   co flex-wrap nen co dong 2 dong co dong 3 dong -> khung lech. */
+.drow{display:grid;grid-template-rows:auto auto auto;gap:1px;padding:5px 7px;border-radius:6px;background:var(--cell-bg);border:1px solid transparent;transition:opacity .16s ease,border-color .16s ease}
+/* Hai muc — sang hoac chim 28% — dung luat L9, giong chart Ly do va thanh cau
+   thanh cua Alert. Chi chim cac dong TRONG CUNG khung, bon khung kia de yen. */
+.dim:hover .drow{opacity:.28}
+.dim .drow:hover{opacity:1;border-color:var(--border)}
+.drow .l1{display:flex;align-items:baseline;gap:8px}
+.drow .nm{font-size:12px;font-weight:600;color:var(--fg);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drow .pct{margin-left:auto;font-size:12.5px;font-weight:700}
+.drow .l2{display:flex;align-items:baseline;gap:10px;font-size:10px;color:var(--fg-mute);white-space:nowrap}
+.drow .l2 .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
+/* Tong CSE la con duy nhat con lai o dong 3, in dam de doc duoc ngay. Truoc day
+   cho nay la `-x CSE` (khoi luong truot) cong mot thanh — ca hai deu khong noi
+   ro dang do gi. */
+.drow .vol{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--fg)}
+/* KHONG dung margin-top:auto. O trang thai thu gon moi khung co dung 3 dong
+   cao bang nhau nen link da tu thang hang. Neu ghim xuong day thi khi mot
+   khung mo rong 11 dong, link cua 4 khung con lai bi day xa khoi noi dung. */
+.viewall{font-size:11.5px;color:var(--accent-blue);cursor:pointer;background:none;border:none;padding:0;text-align:left}
+.viewall:hover{text-decoration:underline}
+
+/* charts */
+.plot{width:100%}
+.charts2{display:grid;gap:10px;grid-template-columns:1fr}
+/* Hai khung CAO BANG NHAU, nhung chart In-full chi co 2 thanh so voi 6 —
+   de plot cao bang nhau thi hai thanh do bi giai ra rat thua. Cho plot cao
+   theo SO THANH (cung nhip ~27px/thanh) roi CAN GIUA trong khung: hai chart
+   co cung do day thanh va cung nhip, phan du chia deu tren duoi. */
+.charts2 .panel{display:flex;flex-direction:column}
+.charts2 .panel-bd{flex:1;display:flex;align-items:center}
+.charts2 .panel-bd .plot{width:100%}
+/* Cot trai rong hon: nhan chang cua On-time dai hon han (`Lỗi kho xuất hàng
+   trễ`) nen can nhieu cho hon cho truc dung, neu khong phan ve bi bop. */
+@container (min-width:1000px){.charts2{grid-template-columns:1.4fr 1fr}}
+.fallback{padding:22px;text-align:center;font-size:13px;color:var(--fg-mute)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <button class="iconbtn" type="button" aria-label="Thu gọn thanh cạnh">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+    </button>
+    <button class="iconbtn" type="button" aria-label="Quay lại">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+    </button>
+    <div class="spacer"></div>
+    <button class="iconbtn" type="button" aria-label="Ngôn ngữ">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 5h7"/><path d="M7 5c0 6-3 9-3 9"/><path d="M5 12c3 0 6 2 6 2"/><path d="m13 20 4-10 4 10"/><path d="M14.5 17h5"/></svg>
+    </button>
+    <div class="themepick" role="group" aria-label="Chọn chủ đề">
+      <button type="button" id="pickLight" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+        Sáng
+      </button>
+      <button type="button" id="pickDark" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg>
+        Tối
+      </button>
+    </div>
+    <button class="iconbtn" type="button" aria-label="Cài đặt">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 11.5 4a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 19.4 11a2 2 0 1 1 0 4Z"/></svg>
+    </button>
+    <button class="iconbtn on" type="button" aria-label="Trợ lý">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+    <span class="avatar">SA</span>
+  </div>
+
+  <div class="viewhead">
+    <span class="viewicon" aria-hidden="true">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>
+    </span>
+    <span class="viewtitle">OTIF</span>
+    <div class="spacer"></div>
+    <button class="hbtn" type="button" aria-label="Làm mới">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+    </button>
+    <button class="hbtn" type="button">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      Sửa
+    </button>
+  </div>
+
+  <div class="filterbar">
+    <button class="fsel" type="button"><span class="lb">Kho</span><span class="vl">Tất cả</span><span class="caret">▾</span></button>
+    <button class="fsel" type="button"><span class="lb">Khu vực</span><span class="vl">Tất cả</span><span class="caret">▾</span></button>
+    <button class="fsel" type="button"><span class="lb">Nhóm hàng</span><span class="vl">Tất cả</span><span class="caret">▾</span></button>
+    <button class="fsel" type="button"><span class="lb">Nhà vận tải</span><span class="vl">Tất cả</span><span class="caret">▾</span></button>
+    <button class="fsel" type="button"><span class="lb">Loại ngày</span><span class="vl">Delivery Cycle</span><span class="caret">▾</span></button>
+    <button class="fsel" type="button"><span class="lb">Khoảng ngày</span><span class="vl">09/09/2026</span><span class="caret">▾</span></button>
+    <div class="btnpair">
+      <button class="hbtn" type="button">Đặt lại</button>
+      <button class="gobtn" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+        Áp dụng
+      </button>
+    </div>
+  </div>
+
+  <div class="tabbar" role="tablist" aria-label="Chế độ xem">
+    <button class="tabb" role="tab" aria-selected="true" type="button">Biểu đồ</button>
+    <button class="tabb" role="tab" aria-selected="false" type="button">Chi tiết bảng</button>
+    <div class="spacer"></div>
+    <span class="tgtwrap">
+      <button class="pillbtn tgt" type="button" aria-describedby="tgtpop">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
+        Mục tiêu
+      </button>
+      <span class="tgtpop" id="tgtpop" role="tooltip">
+        <h4>Cách đổ màu</h4>
+        <span class="band"><i style="background:var(--rag-good)"></i><span><b>Đạt</b> — bằng hoặc trên mục tiêu</span></span>
+        <span class="band"><i style="background:var(--rag-warn)"></i><span><b>Cần theo dõi</b> — thiếu dưới 5 điểm</span></span>
+        <span class="band"><i style="background:var(--rag-bad)"></i><span><b>Không đạt</b> — thiếu từ 5 điểm trở lên</span></span>
+        <span class="tlist">
+          <span>OTIF <b>85%</b></span>
+          <span>On-time <b>88%</b></span>
+          <span>In-full <b>95%</b></span>
+        </span>
+      </span>
+    </span>
+    <button class="pillbtn exc" type="button">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      Điểm nóng ngoại lệ <span class="badge">5</span>
+    </button>
+  </div>
+
+  <div class="body">
+
+    <!-- ======================= hàng 1: một thanh, các ô rời nhau, hai con gộp -->
+    <section class="split" aria-label="Chuỗi mốc khối lượng CSE">
+      <div class="capbar">
+        <div class="bar" id="capbar" role="img" aria-label="76.496 CSE đặt, chia ba phần rời nhau: thiếu không giao 247, giao nhưng trễ 9.559, giao đúng hạn 66.690.">
+          <span class="seg" data-link="short" style="flex:247;background:var(--rag-bad)"  title="Thiếu, không giao — 247 CSE · 0,32%"></span>
+          <span class="seg" data-link="late"  style="flex:9559;background:var(--rag-warn)"  title="Giao nhưng trễ — 9.559 CSE · 12,50%"></span>
+          <span class="seg" data-link="otif"  style="flex:66690;background:var(--st-ok-2)" title="Giao đúng hạn — 66.690 CSE · 87,18%"></span>
+        </div>
+      </div>
+
+      <div class="boxes">
+        <div class="box" data-link="dat" style="--ink:var(--series-neutral)">
+          <div class="accent"></div>
+          <span class="k"><i></i>CSE đặt</span>
+          <span class="v" data-count="76496">76.496</span>
+          <span class="s"></span>
+        </div>
+        <div class="box" data-link="short" style="--ink:var(--rag-bad)">
+          <div class="accent"></div>
+          <span class="k"><i></i>Thiếu, không giao</span>
+          <span class="v" data-count="247">247</span>
+          <span class="s"></span>
+        </div>
+        <!-- Da giao = xanh lam: no la TONG CON cua hai o phai, khong phai mot trang
+             thai RAG. Xanh lam tach no khoi cap do/xanh cua trang thai, va tra mau
+             xanh la ve dung mot nghia duy nhat: giao dung han. -->
+        <div class="box" data-link="giao" style="--ink:var(--series-blue)">
+          <div class="accent"></div>
+          <span class="k"><i></i>Đã giao</span>
+          <span class="v" data-count="76249">76.249</span>
+          <span class="s"></span>
+        </div>
+        <div class="box" data-link="late" style="--ink:var(--rag-warn)">
+          <div class="accent"></div>
+          <span class="k"><i></i>Giao nhưng trễ</span>
+          <span class="v" data-count="9559">9.559</span>
+          <span class="s"></span>
+        </div>
+        <div class="box" data-link="otif" style="--ink:var(--st-ok-2)">
+          <div class="accent"></div>
+          <span class="k"><i></i>Giao đúng hạn</span>
+          <span class="v" data-count="66690">66.690</span>
+          <span class="s"></span>
+        </div>
+      </div>
+
+      <div class="rollups">
+        <div class="rollup" data-rate="otif" style="--ink:var(--rag-good)">
+          <div class="top">
+            <span class="nm">% OTIF</span>
+            <span class="v">87,18%</span>
+          </div>
+          <div class="track" role="img" aria-label="OTIF 87,18 phần trăm, mục tiêu 85 phần trăm">
+            <span class="fill" style="width:87.18%"></span>
+            <span class="mk" style="left:85%"></span>
+          </div>
+          <div class="sc"><span>0%</span><span class="tgt">mục tiêu 85%</span><span>100%</span></div>
+        </div>
+        <div class="rollup" data-rate="ontime" style="--ink:var(--rag-warn)">
+          <div class="top">
+            <span class="nm">% On-time</span>
+            <span class="v">87,46%</span>
+          </div>
+          <div class="track" role="img" aria-label="On-time 87,46 phần trăm, mục tiêu 88 phần trăm">
+            <span class="fill" style="width:87.46%"></span>
+            <span class="mk" style="left:88%"></span>
+          </div>
+          <div class="sc"><span>0%</span><span class="tgt">mục tiêu 88%</span><span>100%</span></div>
+        </div>
+        <div class="rollup" data-rate="infull" style="--ink:var(--rag-good)">
+          <div class="top">
+            <span class="nm">% In-full</span>
+            <span class="v">99,68%</span>
+          </div>
+          <div class="track" role="img" aria-label="In-full 99,68 phần trăm, mục tiêu 95 phần trăm">
+            <span class="fill" style="width:99.68%"></span>
+            <span class="mk" style="left:95%"></span>
+          </div>
+          <div class="sc"><span>0%</span><span class="tgt">mục tiêu 95%</span><span>100%</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ Metrics 5 panel -->
+    <section class="panel" aria-labelledby="h3">
+      <div class="panel-hd">
+        <h2 id="h3">Phân tích theo chiều</h2>
+      </div>
+      <div class="dims" id="dims"></div>
+    </section>
+
+    <!-- ============================================ xu hướng, tách khung -->
+    <section class="panel" aria-labelledby="h4">
+      <div class="panel-hd">
+        <h2 id="h4">Sản lượng theo kỳ</h2>
+      </div>
+      <div class="panel-bd">
+        <div class="plot" id="cTrend" style="height:205px"></div>
+      </div>
+    </section>
+
+    <!-- ============================================ Reasons -->
+    <div class="charts2">
+      <section class="panel" aria-labelledby="h5">
+        <div class="panel-hd">
+          <h2 id="h5">Lý do ảnh hưởng % On-time</h2>
+          <span class="sub">186 đơn trượt · xếp theo trình tự chặng, càng về cuối màu càng đậm</span>
+        </div>
+        <div class="panel-bd"><div class="plot" id="cOt" style="height:186px"></div></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h6">
+        <div class="panel-hd">
+          <h2 id="h6">Lý do ảnh hưởng % In-full</h2>
+          <span class="sub">51 đơn trượt · mỗi đơn một lý do, cộng đúng tổng</span>
+        </div>
+        <div class="panel-bd">
+          <div class="plot" id="cIf" style="height:150px"></div>
+        </div>
+      </section>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/6.1.0/echarts.min.js"></script>
+<script>
+(function () {
+  /* Mau KHONG viet lai o day. ECharts can gia tri thuc chu khong nhan var(),
+     nen doc thang tu bien CSS da khai bao o dau file — mot nguon su that duy
+     nhat, va ban light se tu dung dung mau khi duoc dung sau nay. */
+  /* Doc bien CSS MOI LAN GOI, khong cache — de khi doi theme thi lay dung mau
+     cua theme moi. `readTokens()` gan lai cac bien duoc dung nhieu lan. */
+  function T(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function isDark(){
+    var t=document.documentElement.getAttribute('data-theme');
+    if(t==='light') return false;
+    if(t==='dark')  return true;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  /* Tron hai mau hex theo ty le t (0 = a, 1 = b). */
+  function mix(a,b,t){
+    function rgb(h){var v=parseInt(h.slice(1),16);return [(v>>16)&255,(v>>8)&255,v&255]}
+    function hx(x){return Math.round(x).toString(16).padStart(2,'0')}
+    var p=rgb(a), q=rgb(b);
+    return '#'+hx(p[0]+(q[0]-p[0])*t)+hx(p[1]+(q[1]-p[1])*t)+hx(p[2]+(q[2]-p[2])*t);
+  }
+  var GOOD,WARN,BAD,VOL,INK,MUTE,GRID,BORDER,PANEL,OTIFC,LATE1,LATE3,BARLBL,BARLBL_HI,YEL,TEAL;
+  function readTokens(){
+    GOOD=T('--rag-good'); WARN=T('--rag-warn'); BAD=T('--rag-bad');
+    /* BA DUONG: vang · xanh teal · tim — cach nhau ~120 do tren vong mau, tach
+       toi da. Ban truoc thu xanh lo/xanh duong/tim de tranh trung mau RAG, nhung
+       ba mau do nam gon trong ~80 do nen KHONG phan biet duoc — danh doi sai:
+       phan biet duoc quan trong hon tranh trung.
+       Cach xu ly trung RAG: dung SAC TUOI HAN HAN sac RAG.
+         duong On-time  #fde047 vang tuoi   vs  --rag-warn #f59e0b cam ho phach
+         duong In-full  #2dd4bf teal tuoi   vs  --rag-good #10b981 luc bao
+       Hai bang van doc duoc tach nhau, va RAG chi xuat hien o chip + cham Metrics
+       chu khong nam tren chart duong.
+       Cot san luong tro lai XANH DUONG — mau xam lam ca vung cot xin va kho doc. */
+    VOL=T('--series-blue'); OTIFC=T('--series-violet');
+    YEL=T('--accent-yellow'); TEAL=T('--series-teal');
+    INK=T('--fg'); MUTE=T('--fg-mute'); GRID=T('--chart-grid');
+    BORDER=T('--border'); PANEL=T('--s-panel');
+    /* Hai dau cua thang mau theo chang. Lay tu token nen DOI CHIEU dung theo
+       theme: toi thi #fecdd3 -> #e11d48 (nhat -> dam), sang thi #f43f5e ->
+       #881337. Neu tron ve phia TRANG nhu ban truoc thi tren nen sang cac chang
+       dau se mo gan het — dung loi ma luat L4 canh. */
+    LATE3=T('--st-late-3');
+    /* Dau NHAT cua thang chang.
+         Toi : `--st-late-1` (#fecdd3) da du nhat tren nen navy.
+         Sang: `#f43f5e` tren nen trang thi ba bac dau gan nhu khong phan biet
+               duoc. Tron 40% ve phia nen trang de mo rong dai — nhat han ra
+               nhung KHONG trang hoan toan. */
+    LATE1 = isDark() ? T('--st-late-1') : mix(T('--st-late-1'), T('--s-page'), 0.40);
+
+    /* Nhan so tren cot: mot mau duy nhat + VIEN CHU mau nen (xem cho dat label).
+       Truoc day dao mau theo trang thai cot, nhung nhan so >100k rong hon cot
+       nen nua chu nam ngoai cot va cach do that bai. */
+    /* Nhan so RUT GON (`115,9k`) nen luon nam TRON trong cot -> khong con phan
+       tran ra nen panel, va vi vay moi dao mau theo trang thai cot duoc:
+         cot mo .45  -> chu --fg          (toi: trang tren navy nhat  ~6:1)
+         cot dac     -> chu dao nguoc     (toi: navy tren #60a5fa · sang: trang tren #1d4ed8)
+       Ban truoc dat `label.backgroundColor` lam chip nen, nhung ECharts KHONG
+       render chip do (do SVG chi co 1 <rect>) — nen ban sua do thuc te vo hieu. */
+    BARLBL    = T('--fg');
+    BARLBL_HI = isDark() ? T('--s-page') : T('--tip-fg');
+  }
+  readTokens();
+  var FONT='Inter, "Segoe UI", sans-serif';
+  var TGT={otif:85, ot:88, iff:95};
+  var vn=function(n){return n.toLocaleString('vi-VN')};
+  var pct=function(n){return n.toFixed(1).replace('.',',')+'%'};
+
+  /* ---------- RAG so target: xanh ≥ target · vàng ≥ target−5 · đỏ dưới ---- */
+  function rag(v,t){ return v>=t?GOOD : v>=t-5?WARN : BAD; }
+
+  /* ============================== Metrics: xếp theo KHỐI LƯỢNG TRƯỢT ---- */
+  /* Du lieu MINH HOA. Danh sach thanh vien tung chieu dat theo so luong thuc do
+     tren server (6 kho · 4 kenh ban · 11 khu vuc), tru NHA VAN TAI chi liet ke 8
+     ma da biet chac — he thong that co 12. Con so ty le/khoi luong la minh hoa,
+     co tinh de MOI moc deu khac 0 va moi bac RAG deu xuat hien. */
+  /* Du lieu MINH HOA, nhung DANH SACH THANH VIEN va TONG KHOI LUONG lay theo thuc te:
+       - kho: 4 ma co khoi luong thuc trong rc_otif (NKD, BKD1, VN831, VN821).
+         Bay ma con lai (101/103/121/128/501/505/528) co don nhung CSE = 0 hoac khong dang ke.
+       - khu vuc: 11 ten tu `mv_filter_region.group_area_name` (dung cot _name, la cot
+         ma `filter_region.sql` cua OTIF doc).
+       - nhom hang: 4 ten dang dung o panel (DRY, MOONCAKE, FRESH, POSM/OFFBOM).
+       - nha van tai: 11 ten tu `mv_filter_vendor.short_name`.
+     Khoi luong tung chieu CONG DUNG 76.249 CSE = o `Da giao` o khoi tren, de nam khung
+     nay khop voi dau trang thay vi la ba bo so roi nhau. */
+  var DIMS=[
+    { nm:'KHO', rows:[
+      {name:'NKD',   otif:85.0, ot:85.6, iff:99.3, vol:44530},
+      {name:'BKD1',  otif:92.5, ot:92.9, iff:99.6, vol:18757},
+      {name:'VN831', otif:82.0, ot:82.8, iff:99.0, vol:10904},
+      {name:'VN821', otif:97.5, ot:97.5, iff:100.0,vol:2058}
+    ]},
+    { nm:'NHÓM HÀNG', rows:[
+      {name:'DRY',         otif:89.6, ot:90.0, iff:99.6, vol:48000},
+      {name:'MOONCAKE',    otif:90.3, ot:90.3, iff:100.0,vol:14200},
+      {name:'FRESH',       otif:64.6, ot:65.5, iff:98.6, vol:11049},
+      {name:'POSM/OFFBOM', otif:73.5, ot:77.1, iff:95.3, vol:3000}
+    ]},
+    { nm:'KÊNH BÁN', rows:[
+      {name:'GT',  otif:84.0, ot:84.5, iff:99.4, vol:45000},
+      {name:'MT',  otif:98.5, ot:98.8, iff:99.7, vol:18000},
+      {name:'KA',  otif:72.9, ot:73.1, iff:99.7, vol:9249},
+      {name:'B2B', otif:91.4, ot:91.9, iff:99.5, vol:4000}
+    ]},
+    { nm:'KHU VỰC', rows:[
+      {name:'Ho Chi Minh',             otif:96.3, ot:96.6, iff:99.7, vol:14000},
+      {name:'Ha Noi',                  otif:78.6, ot:79.0, iff:99.4, vol:12500},
+      {name:'Mekong 1',                otif:88.4, ot:88.8, iff:99.5, vol:9200},
+      {name:'Mekong 2',                otif:85.1, ot:85.6, iff:99.4, vol:7800},
+      {name:'South East',              otif:93.1, ot:93.4, iff:99.7, vol:7100},
+      {name:'Central',                 otif:90.2, ot:90.6, iff:99.6, vol:6400},
+      {name:'North Central Coast',     otif:65.8, ot:67.3, iff:97.9, vol:5300},
+      {name:'North East - North West', otif:71.2, ot:72.0, iff:98.9, vol:4900},
+      {name:'South Central Coast',     otif:81.4, ot:81.9, iff:99.4, vol:4200},
+      {name:'Central highland',        otif:78.4, ot:78.4, iff:100.0,vol:2800},
+      {name:'South East - Lam Dong',   otif:94.8, ot:95.0, iff:99.8, vol:2049}
+    ]},
+    { nm:'NHÀ VẬN TẢI', rows:[
+      {name:'HDA',           otif:83.2, ot:83.9, iff:99.2, vol:22000},
+      {name:'ANH SON',       otif:86.0, ot:86.2, iff:99.7, vol:19500},
+      {name:'TLL',           otif:85.6, ot:85.6, iff:100.0,vol:8400},
+      {name:'NGUYEN PHAT',   otif:91.2, ot:91.5, iff:99.7, vol:7200},
+      {name:'THANH AN',      otif:69.4, ot:70.1, iff:98.8, vol:5600},
+      {name:'NJV- Nhất Tín', otif:88.3, ot:88.6, iff:99.6, vol:4300},
+      {name:'HVP',           otif:96.1, ot:96.4, iff:99.7, vol:3500},
+      {name:'GHN',           otif:74.5, ot:75.2, iff:98.7, vol:2400},
+      {name:'HOA PHAT',      otif:93.7, ot:93.9, iff:99.8, vol:1800},
+      {name:'NINJAVAN',      otif:79.8, ot:80.4, iff:99.1, vol:1000},
+      {name:'VAN HO',        otif:97.2, ot:97.2, iff:100.0,vol:549}
+    ]}
+  ];
+  var host=document.getElementById('dims');
+  var TOP_N=3;                 /* so dong hien khi chua mo rong */
+  var openDim={};              /* chi so chieu -> da mo rong hay chua */
+
+  /* Sap xep theo KHOI LUONG TRUOT = khoi luong x (1 - OTIF%), khong theo ty le.
+     Ly do o luat L12: mot kho 97,5% nhung khoi luong lon co the lam truot nhieu
+     CSE hon mot kho 66% khoi luong nho. Con so truot khong con hien tren dong
+     nua (khach thay khong ro nghia), nhung tieu de panel van noi ro tieu chi xep. */
+  DIMS.forEach(function(d){
+    d.rows.forEach(function(r){ r.miss=Math.round(r.vol*(100-r.otif)/100); });
+    d.rows.sort(function(a,b){ return b.miss-a.miss; });
+  });
+
+  function drowHtml(r){
+    return '<div class="drow">'+
+      '<div class="l1"><span class="nm">'+r.name+'</span>'+
+        '<span class="pct" style="color:'+rag(r.otif,TGT.otif)+'">'+pct(r.otif)+'</span></div>'+
+      '<div class="l2">'+
+        '<span><span class="dot" style="background:'+rag(r.ot,TGT.ot)+'"></span>OT '+pct(r.ot)+'</span>'+
+        '<span><span class="dot" style="background:'+rag(r.iff,TGT.iff)+'"></span>IF '+pct(r.iff)+'</span>'+
+      '</div>'+
+      '<div class="l2"><span>sản lượng</span>'+
+        '<span class="vol">'+vn(r.vol)+' CSE</span></div>'+
+    '</div>';
+  }
+
+  function renderDims(){
+    var html='';
+    DIMS.forEach(function(d,di){
+      var open=!!openDim[di];
+      var shown=open ? d.rows : d.rows.slice(0,TOP_N);
+      var total=d.rows.length;
+      html+='<div class="dim"><div class="dim-hd"><span class="nm">'+d.nm+'</span></div>'+
+            '<div class="dim-rows">'+shown.map(drowHtml).join('')+'</div>';
+      html+= total>TOP_N
+        ? '<button class="viewall" type="button" data-dim="'+di+'">'+
+          (open ? '‹ Thu gọn' : 'Xem tất cả '+d.nm.toLowerCase()+' ›')+'</button>'
+        : '';
+      html+='</div>';
+    });
+    host.innerHTML=html;
+  }
+  renderDims();
+
+  host.addEventListener('click', function(e){
+    var b=e.target.closest('.viewall[data-dim]');
+    if(!b) return;
+    var di=b.dataset.dim;
+    openDim[di]=!openDim[di];
+    renderDims();
+    /* renderDims() thay ca innerHTML nen nut vua bam bi thao khoi DOM va focus
+       roi ve body — nguoi dung ban phim mat vi tri. Tra focus ve dung nut do. */
+    var again=host.querySelector('.viewall[data-dim="'+di+'"]');
+    if(again) again.focus();
+  });
+
+  /* ==================================================== charts ---------- */
+  var ids=['cTrend','cOt','cIf'];
+  var charts=[];
+  window.addEventListener('resize',function(){charts.forEach(function(c){c.resize()})});
+
+  /* Goi lai duoc: doi theme thi dispose het roi dung lai voi mau moi. ECharts
+     nhan mau la GIA TRI luc setOption, khong theo dõi bien CSS, nen khong ve lai
+     thi chart giu nguyen mau cua theme cu. */
+  function buildCharts(){
+    if(!window.echarts){
+      ids.forEach(function(id){var el=document.getElementById(id);
+        if(el){el.className='fallback';el.textContent='Không tải được thư viện biểu đồ.'}});
+      return;
+    }
+    charts.forEach(function(c){c.dispose()});
+    charts=[];
+    function make(id,opt){var el=document.getElementById(id);if(!el)return;
+      var c=echarts.init(el,null,{renderer:'svg'});c.setOption(opt);charts.push(c)}
+
+    var tip={backgroundColor:T('--tip-bg'),borderColor:BORDER,borderWidth:1,padding:[9,12],
+      extraCssText:'border-radius:10px;box-shadow:0 10px 26px rgba(0,0,0,.55);',
+      textStyle:{color:T('--tip-fg'),fontSize:12,fontFamily:FONT}};
+    /* Chu nho trong chart dung --fg-dim chu khong phai --fg-mute, va len 11,5px:
+       nhan ngay/nhan truc o muc `mute` bi chim tren ca hai nen. */
+    var tick={color:T('--fg-dim'),fontSize:11.5,fontFamily:FONT};
+
+    /* CHI cac ngay CO du lieu. Ngay khong lam viec (30/08, 06/09 Chu nhat; 02/09
+       Quoc khanh) bi BO HAN khoi truc, khong con vung xam va khong con dut khuc —
+       giong chart ben Control Tower. Doi lai: khoang cach giua hai diem khong con
+       ty le voi so ngay that, nen tooltip luon in ngay day du. */
+    var days=['27/08','28/08','29/08','31/08','01/09','03/09','04/09','05/09','07/09','08/09','09/09'];
+    var vol =[96637,115868,82814,93637,26434,15611,78816,94968,105209,95153,51315];
+    var otif=[88,96,90,93,78,74,91,96,92,94,85];
+    var ot  =[89,96,91,93,79,75,92,96,93,95,86];
+    var iff =[99,100,99,100,99,98,99,100,99,99,99];
+
+    /* Duong muc tieu: khong con truc % o canh nen mot duong dut khong nhan la vo
+       nghia. Dat nhan o dau phai, theo mau cua chinh series do. */
+    function tgtLine(color,label,val){
+      return {symbol:'none',silent:true,
+        lineStyle:{color:color,width:1,type:'dashed',opacity:.6},
+        label:{formatter:label,position:'end',color:color,fontSize:11,fontWeight:600,fontFamily:FONT},
+        data:[{yAxis:val}]};
+    }
+
+    make('cTrend',{
+      /* Legend XEP DOC o cot ben phai, khong con chiem mot hang ngang tren dinh.
+         grid.right 210 = cho cho ca nhan `muc tieu 95%` (~80px, nam ngay ria phai
+         cua vung ve) LAN cot legend (~115px) o ngoai cung. Nho bo hang legend
+         tren dinh, grid.top xuong 8 va chart thap them 30px. */
+      grid:{left:12,right:210,top:8,bottom:6,containLabel:true},
+      legend:{orient:'vertical',right:2,top:'middle',itemWidth:14,itemHeight:9,itemGap:11,
+        textStyle:{color:T('--fg-dim'),fontSize:12,fontWeight:500,fontFamily:FONT}},
+      /* axisPointer TAT han: bong xam phu len cot lam mo hieu ung sang, con duong
+         doc thi thua — cot sang len da du chi ro dang o ngay nao. */
+      tooltip:Object.assign({trigger:'axis',axisPointer:{type:'none'}},tip,{formatter:function(p){
+        var i=p[0].dataIndex;
+        /* Moi dong to theo mau series cua no, khong de trang het. */
+        function row(c,nm,v){
+          return '<span style="color:'+c+'">'+nm+' <b>'+v+'</b></span><br>';
+        }
+        /* Dung --tip-* chu KHONG dung --series-*: nen tooltip la #081b3a o ca hai
+           theme, nen mau cua ban SANG (vd #1d4ed8) se khong doc duoc tren do. */
+        return '<b>'+days[i]+'</b><br>'+
+          '<span style="color:'+T('--tip-blue')+'">Sản lượng <b>'+vn(vol[i])+'</b> CSE</span><br>'+
+          row(T('--tip-yellow'),'% On-time', ot[i]+'%')+
+          row(T('--tip-teal'),  '% In-full', iff[i]+'%')+
+          row(T('--tip-violet'),'% OTIF',    otif[i]+'%');
+      }}),
+      xAxis:{type:'category',data:days,boundaryGap:true,
+        axisLabel:tick,axisLine:{lineStyle:{color:BORDER}},axisTick:{show:false}},
+      /* Bo han nhan hai truc doc: cot da co nhan so ngay tren dinh, con ba duong
+         doc bang muc tieu + tooltip. Van giu hai truc VALUE de hai thang doc lap. */
+      yAxis:[
+        {type:'value',max:135000,axisLabel:{show:false},axisLine:{show:false},
+          axisTick:{show:false},splitLine:{show:false}},
+        {type:'value',min:60,max:102,axisLabel:{show:false},axisLine:{show:false},
+          axisTick:{show:false},splitLine:{show:false}}
+      ],
+      series:[
+        {name:'Sản lượng CSE',type:'bar',yAxisIndex:0,barMaxWidth:44,
+          data:vol,
+          /* Moi cot cung mot do mo; TRO VAO thi cot do sang len. Ban truoc to
+             sang cot cuoi cung coi la `hom nay` — nhung khi khach chon khoang
+             ngay bat ky thi khong con xac dinh duoc cot nao la hom nay. */
+          itemStyle:{color:VOL,opacity:.5,borderRadius:[3,3,0,0]},
+          emphasis:{itemStyle:{opacity:1},label:{color:BARLBL_HI}},
+          /* Nhan dat o DAY cot. Dat tren dinh (`top`) hay trong dinh (`insideTop`)
+             deu bi ba duong ty le cat ngang, vi duong di dung qua vung do. Day cot
+             la vung duy nhat khong bao gio co duong. */
+          /* `115,9k` thay vi `115.868`: nhan day du rong 46px trong khi cot toi da
+             44px nen luon tran ra ngoai. Rut gon con ~34px thi nam tron trong cot.
+             So day du van co trong tooltip. */
+          label:{show:true,position:'insideBottom',distance:6,color:BARLBL,
+            fontSize:11,fontWeight:700,fontFamily:FONT,
+            formatter:function(p){return (p.value/1000).toFixed(1).replace('.',',')+'k'}}},
+        /* Ba duong dung DUNG mot mau voi duong muc tieu cua chinh no.
+           Net lien = so thuc, net dut = muc tieu.
+
+           PHAN MAU THEO MUC DO CHONG NHAU, khong phai theo thu tu:
+           On-time va OTIF co gia tri chi cach ~1pt (vi OTIF = On-time x In-full
+           ma In-full ~99,7%) nen HAI DUONG NAY DE LEN NHAU -> phai lay hai mau
+           XA NHAU nhat trong bo: xanh lo vs tim. In-full nam tach han o ~99%
+           nen du dung xanh duong (ke voi xanh lo) van khong nham duoc.
+           Ky hieu diem cung khac nhau: tron nho / thoi / tron to. */
+        {name:'% On-time',type:'line',yAxisIndex:1,data:ot,smooth:.25,
+          symbol:'circle',symbolSize:5,z:3,
+          itemStyle:{color:YEL},lineStyle:{width:2,color:YEL},
+          markLine:tgtLine(YEL,'mục tiêu 88%',TGT.ot)},
+        {name:'% In-full',type:'line',yAxisIndex:1,data:iff,smooth:.25,
+          symbol:'diamond',symbolSize:6,z:3,
+          itemStyle:{color:TEAL},lineStyle:{width:2,color:TEAL},
+          markLine:tgtLine(TEAL,'mục tiêu 95%',TGT.iff)},
+        {name:'% OTIF',type:'line',yAxisIndex:1,data:otif,smooth:.25,
+          symbol:'circle',symbolSize:7,z:4,
+          itemStyle:{color:OTIFC,borderColor:PANEL,borderWidth:1.5},
+          lineStyle:{width:3,color:OTIFC},
+          markLine:tgtLine(OTIFC,'mục tiêu 85%',TGT.otif)}
+      ]
+    });
+
+    /* Noi suy giua HAI DAU cua thang L3 thay vi tron ve phia trang. Nho vay
+       thang tu dao chieu theo theme: toi thi nhat -> dam, sang thi vua -> rat dam,
+       va MOI bac deu con du tuong phan voi nen cua chinh theme do (luat L4).
+       Tron ve trang thi tren nen sang cac chang dau se mo gan het. */
+    function stepColor(i,n){
+      function rgb(h){var v=parseInt(h.slice(1),16);return [(v>>16)&255,(v>>8)&255,v&255]}
+      var a=rgb(LATE1), b=rgb(LATE3), t=n<=1?1:i/(n-1);
+      function hx(x){return Math.round(x).toString(16).padStart(2,'0')}
+      return '#'+hx(a[0]+(b[0]-a[0])*t)+hx(a[1]+(b[1]-a[1])*t)+hx(a[2]+(b[2]-a[2])*t);
+    }
+
+    /* `rows` da xep theo CHANG (khong theo so luong):
+         dang tai -> goi xe -> xe vao kho -> kho xuat hang -> xe ra kho -> xe giao
+       Day dung thu tu `arrayConcat` trong `fail_ontime.sql`, tuc trinh tu chuan
+       nam san trong nguon. Xep theo so luong se pha mat trinh tu do.
+       `denom` = SO DON truot, khong phai tong cac thanh. */
+    function reasons(id,rows,color,denom,overlap,ramp,barW){
+      var names=rows.map(function(r){return r[0]});
+      var vals =rows.map(function(r){return r[1]});
+      var n=vals.length;
+      make(id,{
+        grid:{left:8,right:74,top:10,bottom:26,containLabel:true},
+        tooltip:Object.assign({trigger:'item'},tip,{formatter:function(p){
+          return '<b>'+p.name+'</b><br>'+
+            '<span style="color:'+color+'">'+vn(p.value)+' đơn</span> · '+
+            Math.round(p.value/denom*100)+'% số đơn trượt'+
+            (overlap ? '<br><span style="opacity:.55">một đơn có thể trễ ở nhiều chặng</span>' : '');
+        }}),
+        xAxis:{type:'value',axisLabel:tick,axisLine:{show:false},axisTick:{show:false},
+          splitLine:{lineStyle:{color:GRID,type:'dashed'}}},
+        yAxis:{type:'category',data:names,inverse:true,
+          axisLabel:Object.assign({width:150,overflow:'truncate'},tick),
+          axisLine:{lineStyle:{color:BORDER}},axisTick:{show:false}},
+        series:[{type:'bar',barMaxWidth:barW||20,
+          /* Chang 1 nhat nhat -> chang cuoi dam nhat, cung mot hue.
+             KHONG dung do nhat de ma hoa thu hang: thu hang da co do dai thanh
+             va vi tri sap xep roi, them lan thu ba la thua. */
+          data:vals.map(function(v,i){return {value:v,
+            itemStyle:{color: ramp ? stepColor(i,n) : color}}}),
+          itemStyle:{borderRadius:[0,4,4,0]},
+          /* Hai muc: sang hoac chim 28% — dung luat L9, giong thanh cau thanh cua
+             Alert va capbar. KHONG doi do dam cua thanh dang tro vao, vi do dam
+             o day dang mang nghia (chang) — doi no la bien no thanh chang khac. */
+          emphasis:{focus:'self'},
+          blur:{itemStyle:{opacity:.28}},
+          label:{show:true,position:'right',distance:8,color:INK,fontSize:11.5,fontWeight:600,fontFamily:FONT,
+            formatter:function(p){return vn(p.value)+' ('+Math.round(p.value/denom*100)+'%)'}}}]
+      });
+    }
+
+    /* Sau chang theo dung thu tu thoi gian. Ty le lay theo hinh dang THAT do tren
+       rc_otif (xe giao 77,4% · goi xe 64,3% · dang tai 42,3% · kho xuat hang 12,5%
+       · xe ra kho 3,4% · xe vao kho 0,6% cua so don truot), thu nho ve mot ngay.
+       Tong cac thanh = 373 = 2,0 lan so don truot 186 — dung ty le chong lan that. */
+    reasons('cOt', [
+      ['Lỗi đăng tài trễ',        79],
+      ['Lỗi gọi xe vào kho trễ', 120],
+      ['Lỗi xe vào kho trễ',       1],
+      ['Lỗi kho xuất hàng trễ',   23],
+      ['Lỗi xe ra kho trễ',        6],
+      ['Lỗi xe giao trễ',        144]
+    ], BAD, 186, true, true);
+
+    /* In-full KHAC On-time: `not_infull_reason` la MOT cot, moi don dung mot ly do
+       nen cac phan ROI NHAU va cong dung tong. Vi vay % o day la % that. */
+    reasons('cIf', [
+      ['Lỗi kho',      44],
+      ['Lỗi hệ thống',  7]
+    /* barW 30: chi hai thanh trong mot khung cao bang khung 6 thanh, neu de
+       be rong 20 nhu ben kia thi hai thanh mong dinh vao nhau giua mot vung
+       trong lon. Day them + plot cao hon = hai thanh gian ra can doi. */
+    ], WARN, 51, false, false, 30);
+  }
+  buildCharts();
+
+  /* ------------------------------------------------------ chon chu de sang/toi */
+  var root = document.documentElement;
+  var bLight = document.getElementById('pickLight');
+  var bDark  = document.getElementById('pickDark');
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+  function stored(key, val) {
+    try { return val === undefined ? localStorage.getItem(key) : localStorage.setItem(key, val); }
+    catch (e) { return null; }
+  }
+  function resolved() {
+    var t = root.getAttribute('data-theme');
+    if (t === 'light' || t === 'dark') return t;
+    return mq.matches ? 'dark' : 'light';
+  }
+  /* Doi theme thi phai lam BA viec, khong chi doi CSS:
+       1. doc lai bien mau  2. ve lai Metrics (mau cham RAG tinh trong JS)
+       3. dung lai chart (ECharts giu mau la gia tri, khong theo bien CSS) */
+  function repaint() {
+    var r = resolved();
+    bLight.setAttribute('aria-pressed', r === 'light' ? 'true' : 'false');
+    bDark.setAttribute('aria-pressed', r === 'dark' ? 'true' : 'false');
+    readTokens();
+    renderDims();
+    buildCharts();
+  }
+  var saved = stored('ct-otif-theme');
+  if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
+  repaint();
+  mq.addEventListener('change', repaint);
+  bLight.addEventListener('click', function () { root.setAttribute('data-theme', 'light'); stored('ct-otif-theme', 'light'); repaint(); });
+  bDark.addEventListener('click',  function () { root.setAttribute('data-theme', 'dark');  stored('ct-otif-theme', 'dark');  repaint(); });
+
+  /* ========================= liên kết ô khối lượng ↔ chip tỷ lệ --------- */
+  /* Hai nhóm tách biệt: ô khối lượng mang data-link, chip tỷ lệ mang data-rate.
+     Nhờ vậy trỏ vào một ô thì ba chip tỷ lệ để yên, không bị mờ oan. */
+  var buckets = [].slice.call(document.querySelectorAll('[data-link]'));
+  var rates   = [].slice.call(document.querySelectorAll('[data-rate]'));
+
+  /* Hai ô là tổng con — soi sáng luôn các đoạn hợp thành chúng. */
+  var GROUPED = {
+    giao: ['late', 'otif'],
+    dat:  ['short', 'late', 'otif']
+  };
+
+  /* Mỗi tỷ lệ khai báo ba thứ:
+       segs  = đoạn trên thanh thuộc TỬ SỐ (chỉ tử số sáng, phần hụt chìm)
+       boxes = đúng HAI ô: tử và mẫu
+       den   = cách thể hiện mẫu số  ·  'giao' → ngoặc sáng  ·  'dat' → viền toàn thanh
+
+     % In-full = Đã giao ÷ CSE đặt        → 2 đoạn sáng + viền toàn thanh
+     % On-time = Giao đúng hạn ÷ Đã giao  → 1 đoạn sáng + ngoặc sáng
+     % OTIF    = Giao đúng hạn ÷ CSE đặt  → 1 đoạn sáng + viền toàn thanh
+     Ba dấu hiệu khác nhau nên phân biệt được ngay trên cùng một thanh. */
+  /* `den` chi con gia tri 'giao' (ngoac duoi thanh sang len). Truoc day 'dat'
+     bat mot vong xam quanh CA thanh cho % In-full va % OTIF — nhung % On-time
+     khong co, nen trong nhu loi khong dong nhat. Da bo.
+     Ba ty le van phan biet duoc: In-full sang HAI doan, On-time sang mot doan
+     + ngoac, OTIF sang mot doan khong ngoac. */
+  var RATE = {
+    infull: { segs: ['late', 'otif'], boxes: ['giao', 'dat'],  den: null   },
+    ontime: { segs: ['otif'],         boxes: ['otif', 'giao'], den: null   },
+    otif:   { segs: ['otif'],         boxes: ['otif', 'dat'],  den: null   }
+  };
+
+
+  function clearAll() {
+    buckets.concat(rates).forEach(function (el) {
+      el.classList.remove('linked', 'dimmed');
+    });
+  }
+
+  function hiBucket(k) {
+    var keys = GROUPED[k] || [k];
+    buckets.forEach(function (el) {
+      var d = el.dataset.link;
+      var mine = d === k || keys.indexOf(d) >= 0;
+      el.classList.toggle('linked', mine);
+      el.classList.toggle('dimmed', !mine);
+    });
+  }
+
+  function hiRate(r) {
+    var m = RATE[r];
+    if (!m) return;
+    buckets.forEach(function (el) {
+      /* Ô dùng danh sách `boxes`; đoạn thanh và ô chú giải dùng `segs`. */
+      var pool = el.classList.contains('box') ? m.boxes : m.segs;
+      var on = pool.indexOf(el.dataset.link) >= 0;
+      el.classList.toggle('linked', on);
+      el.classList.toggle('dimmed', !on);
+    });
+    rates.forEach(function (el) {
+      var mine = el.dataset.rate === r;
+      el.classList.toggle('linked', mine);
+      el.classList.toggle('dimmed', !mine);
+    });
+  }
+
+  function wire(list, fn, key) {
+    list.forEach(function (el) {
+      el.tabIndex = 0;
+      el.addEventListener('mouseenter', function () { fn(el.dataset[key]); });
+      el.addEventListener('focus', function () { fn(el.dataset[key]); });
+      el.addEventListener('mouseleave', clearAll);
+      el.addEventListener('blur', clearAll);
+    });
+  }
+  wire(buckets, hiBucket, 'link');
+  wire(rates, hiRate, 'rate');
+
+  /* ---------------------------------------- số đếm lên khi mở trang ----- */
+  if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    document.querySelectorAll('[data-count]').forEach(function(el){
+      var end=Number(el.dataset.count),t0=null,dur=640;
+      el.textContent='0';
+      (function step(ts){
+        if(t0===null)t0=ts;
+        var p=Math.min((ts-t0)/dur,1);
+        el.textContent=(end>=1000?vn:String)(Math.round(end*(1-Math.pow(1-p,3))));
+        if(p<1)requestAnimationFrame(step);
+      })(performance.now());
+    });
+  }
+})();
+</script>
+</body>
+</html>

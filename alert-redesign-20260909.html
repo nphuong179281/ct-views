@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logistics Monitoring Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* ============================================================================
+   Logistics Monitoring (Late Order Alert) — bản đề xuất, SÁNG + TỐI.
+
+   Bộ token bên dưới là bản copy nguyên văn của `06-design/ct-design-tokens.css`.
+   ĐỪNG sửa trực tiếp ở đây: sửa file token rồi copy lại, và chạy
+   `bash 06-design/check-tokens.sh` để chắc hai bên không trôi khỏi nhau.
+   Lý do vì sao phải copy thay vì @import, và giải thích từng token, nằm trong
+   header của file token.
+   ========================================================================== */
+
+/* ==========================================================================
+   KHỐI 1 · SÁNG
+   ========================================================================== */
+:root{
+  /* --- bề mặt, bốn bậc ------------------------------------------------- */
+  --s-page:#f7f9fc;                    /* ← --ct-surface-950 · nền trang    */
+  --s-group:#eef2f8;                   /* ← --ct-surface-900 · khung nhóm   */
+  --s-panel:#ffffff;                   /* ← --ct-card                       */
+  --s-card:#ffffff;                    /* ← --ct-card                       */
+  --s-hover:#f1f5fb;                   /* ← --ct-card-hover                 */
+
+  /* --- chữ -------------------------------------------------------------- */
+  --fg:#1f2937;                        /* ← --ct-txt                        */
+  --fg-dim:#4b5563;                    /* ← --ct-txt-dim                    */
+  --fg-mute:#6b7280;                   /* ← --ct-txt-mute                   */
+
+  /* --- đường kẻ, ô, dải ------------------------------------------------- */
+  --border:#e5e7eb;                    /* ← --ct-glass-border               */
+  --hairline:#eef1f5;                  /* ← --ct-hairline                   */
+  --cell-bg:#f7f9fc;                   /* ← --ct-cell-bg                    */
+  --cell-border:#e5e7eb;               /* ← --ct-cell-border                */
+  --track:#e5e7eb;                     /* ← --ct-track · rãnh của thanh     */
+  --row-total:#f2f7fd;                 /* ← --ct-total-bg · dòng Tổng       */
+  --row-kid:#fbfcfe;                   /* [LỆCH] dòng con của bảng cây      */
+  --th-bg:#f7f9fc;                     /* [LỆCH] nền tiêu đề bảng           */
+  /* --th-bg phải ĐẶC, không được dùng --cell-bg: tiêu đề bảng là sticky nên
+     nếu nền trong suốt thì các dòng sẽ chạy xuyên qua nó khi cuộn. */
+
+  /* --- tooltip ---------------------------------------------------------- */
+  --tip-bg:#081b3a;                    /* ← --ct-tooltip-bg                 */
+  --tip-fg:#ffffff;                    /* ← --ct-tooltip-fg                 */
+
+  /* --- màu chữ TRONG tooltip -------------------------------------------- */
+  /* GIỐNG NHAU ở cả hai theme, và cố tình lấy giá trị của bản TỐI. Lý do:
+     `--tip-bg` là #081b3a ở CẢ HAI theme (source dùng tooltip tối trên nền sáng),
+     nên chữ trong tooltip luôn nằm trên nền tối. Dùng `--series-*` của bản sáng
+     ở đây thì `#1d4ed8` trên `#081b3a` chỉ còn ~1,6:1 — không đọc được. */
+  --tip-blue:#60a5fa;
+  --tip-red:#fb7185;
+  --tip-green:#10b981;
+  --tip-violet:#a78bfa;
+  --tip-yellow:#fde047;
+  --tip-cyan:#22d3ee;
+  --tip-teal:#2dd4bf;
+  --tip-neutral:#8b9cb8;
+  /* Source dùng tooltip TỐI trên theme sáng. Vì vậy chữ trong tooltip phải
+     lấy --tip-fg, KHÔNG lấy --fg. Bản Alert đầu tiên dùng --fg nên nếu đổi
+     nền theo source mà quên chữ thì tooltip sẽ đen trên navy. */
+
+  /* --- alpha của card craft --------------------------------------------- */
+  --tint-a:12%;                        /* ← --ct-tint-a                     */
+  --edge-a:34%;                        /* ← --ct-edge-a                     */
+
+  /* --- độ nổi ----------------------------------------------------------- */
+  --lift:0 10px 15px -3px rgba(17,24,39,.08), 0 4px 6px -4px rgba(17,24,39,.08);
+  /* [LỆCH] Không có trong source: `--ct-cta-shadow` chỉ dành cho nút CTA,
+     không phải shadow chung của card. Giá trị này là thang shadow-lg của
+     Tailwind mà `chart-card.tsx` / `kpi-card.tsx` đang dùng qua class. */
+
+  /* --- màu tương tác ---------------------------------------------------- */
+  --brand:oklch(0.41 0.29 264);        /* ← --primary                       */
+  --brand-fg:oklch(0.985 0 0);         /* ← --primary-foreground            */
+  --brand-wash:color-mix(in srgb, var(--brand) 10%, transparent);
+  --row-hover:color-mix(in srgb, var(--brand) 5%, transparent);
+
+  /* --- màu nhấn thông tin ----------------------------------------------- */
+  --accent-blue:#1e88e5;               /* ← --ct-brand-blue                 */
+  --accent-blue-deep:#1565c0;          /* ← --ct-brand-blue-light           */
+  --accent-yellow:#ca8a04;             /* [LỆCH] không có trong source      */
+  /* Vàng TƯƠI, tách hẳn khỏi `--rag-warn` (#b45309 sáng / #f59e0b tối) vốn là
+     cam-hổ phách và đã mang nghĩa "cảnh báo". Dùng cho đường mục tiêu On-time,
+     nơi cần tách khỏi hai đường mục tiêu kia. Bản sáng phải là vàng ĐẬM
+     (#ca8a04, 3,4:1 trên trắng) — #fde047 trên nền trắng chỉ ~1,3:1, mất hút.
+     Đây là lý do đảo chiều độ sáng theo luật L4. */
+
+  /* --- lớp phủ trung tính ----------------------------------------------- */
+  --key-hi:rgba(17,24,39,.05);         /* nền chú giải khi được nhấn         */
+  --btn-hover:rgba(17,24,39,.045);     /* hover của nút chỉ có icon          */
+
+  /* --- RAG · mực, dùng cho CHỮ (cần 4,5:1) ------------------------------ */
+  --rag-good:#15803d;                  /* ← --rag-good-ink                  */
+  --rag-warn:#b45309;                  /* ← --rag-warning-ink               */
+  --rag-bad:#be123c;                   /* ← --rag-critical-ink              */
+  --rag-bad-soft:#e11d48;              /* ← --rag-critical-soft-ink         */
+  --rag-info:#1565c0;                  /* ← --rag-info-ink                  */
+
+  /* --- RAG · đốm, dùng cho MẢNG TÔ (chỉ cần 3:1) ------------------------ */
+  --dot-good:#22c55e;                  /* ← --rag-good-dot                  */
+  --dot-warn:#f59e0b;                  /* ← --rag-warning-dot               */
+  --dot-bad:#ef476f;                   /* ← --rag-critical-dot              */
+  /* L5 · mảng tô cần 3:1, CHỮ cần 4,5:1. Cặp ink/dot của source đã tách
+     đúng theo hai chuẩn này — dùng cặp có sẵn, đừng tự dìm màu xuống. */
+
+  /* --- chart ------------------------------------------------------------ */
+  --chart-ink:#424a53;                 /* ← --ct-chart-ink                  */
+  --chart-grid:rgba(100,116,139,.22);  /* [LỆCH] không có trong source      */
+  --series-neutral:#64748b;            /* ← --ct-series-neutral             */
+  --series-green:#047857;              /* ← --ct-series-green               */
+  --series-amber:#b45309;              /* ← --ct-series-amber               */
+  --series-blue:#1d4ed8;               /* ← --ct-series-blue                */
+  --series-cyan:#0e7490;              /* ← --ct-series-cyan                 */
+  --series-teal:#0f766e;
+  --series-rose:#be123c;               /* ← --ct-series-rose                */
+  --series-violet:#6d28d9;             /* ← --ct-series-violet              */
+
+  /* --- L3 · hue = trạng thái · độ nhạt = chặng -------------------------- */
+  /* [LỆCH] Thang này KHÔNG có trong theme.css — do luật L3 của phiên 1 đặt
+     ra. L4: bản sáng đảo chiều độ sáng, chặng 1 nhạt nhất thành ĐẬM VỪA,
+     vì #a7f3d0 trên #f7f9fc chỉ còn ~1,3:1. Mọi bậc ≥3:1 với nền theme này. */
+  --st-ok-1:#059669;   --st-ok-2:#047857;   --st-ok-3:#064e3b;
+  --st-risk-1:#d97706;
+  --st-late-1:#f43f5e; --st-late-2:#be123c; --st-late-3:#881337;
+  /* Chữ nhỏ trên nền sáng KHÔNG được dùng --st-risk-1 (#d97706 chỉ 3,5:1) —
+     dùng --rag-warn (#b45309, 4,8:1). Mảng tô thì --st-risk-1 hợp chuẩn. */
+
+  /* --- chrome ngoài hệ token -------------------------------------------- */
+  --avatar-bg:#e0e7ff;
+  --avatar-fg:#3730a3;
+}
+
+
+/* ==========================================================================
+   KHỐI 2 · TỐI — theo hệ điều hành, khi người dùng chưa chọn tay
+   ========================================================================== */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --s-page:#060a22;                  /* ← --ct-surface-950                */
+    --s-group:#0a1440;                 /* ← --ct-surface-900                */
+    --s-panel:#0a1440;                 /* ← --ct-surface-900                */
+    --s-card:#0c163a;                  /* ← --card                          */
+    --s-hover:#13245e;                 /* ← --ct-card-hover                 */
+    /* [LỆCH] `--ct-card` ở dark là rgba(12,22,58,.78) — trong suốt. Mockup
+       dùng #0c163a ĐẶC (giá trị của `--card`) để bốn bậc bề mặt tách rõ.
+       Đây chính là lỗi `bg-card/40` đã ghi ở phiên 1: khung nhóm trong suốt
+       làm các nhóm tan vào nền, và là nguyên nhân chính khiến bản dark
+       trông tệ hơn bản light. */
+
+    --fg:#ffffff;                      /* ← --ct-txt                        */
+    --fg-dim:rgba(255,255,255,.74);
+    --fg-mute:rgba(255,255,255,.52);
+    /* [LỆCH] Source đặt --ct-txt-dim và --ct-txt-mute đều = #ffffff ở dark,
+       tức không hạ cấp gì cả — token mất đúng chức năng mà tên nó hứa, và
+       ba cấp chữ dính thành một. Giữ alpha để có thứ bậc. Cả hai bậc vẫn
+       ≥7:1 trên #0a1440. */
+
+    --border:rgba(80,150,255,.14);     /* ← --ct-glass-border               */
+    --hairline:rgba(255,255,255,.06);  /* ← --ct-hairline                   */
+    --cell-bg:rgba(255,255,255,.03);   /* ← --ct-cell-bg                    */
+    --cell-border:rgba(255,255,255,.05); /* ← --ct-cell-border              */
+    --track:rgba(255,255,255,.1);      /* ← --ct-track                      */
+    --row-total:rgba(80,150,255,.06);  /* ← --ct-total-bg                   */
+    --row-kid:rgba(255,255,255,.015);
+    --th-bg:#0d1836;
+
+    --tip-bg:#081b3a;                  /* ← --ct-tooltip-bg                 */
+    --tip-fg:#ffffff;                  /* ← --ct-tooltip-fg                 */
+
+    --tip-blue:#60a5fa;
+    --tip-red:#fb7185;
+    --tip-green:#10b981;
+    --tip-violet:#a78bfa;
+    --tip-yellow:#fde047;
+    --tip-cyan:#22d3ee;
+    --tip-teal:#2dd4bf;
+    --tip-neutral:#8b9cb8;
+
+    --tint-a:10%;                      /* ← --ct-tint-a                     */
+    --edge-a:20%;                      /* ← --ct-edge-a                     */
+
+    --lift:0 8px 24px rgba(0,0,0,.45);
+
+    --brand:oklch(0.65 0.2 264);       /* ← --primary (.dark)               */
+    --brand-fg:oklch(0.985 0 0);       /* ← --primary-foreground (.dark)    */
+    --brand-wash:color-mix(in srgb, var(--brand) 16%, transparent);
+    --row-hover:color-mix(in srgb, var(--accent-blue) 7%, transparent);
+
+    --accent-blue:#4f8dff;             /* ← --ct-brand-blue (.dark)         */
+    --accent-blue-deep:#93b8ff;        /* ← --ct-brand-blue-light (.dark)   */
+    --accent-yellow:#fde047;
+
+    --key-hi:rgba(255,255,255,.08);
+    --btn-hover:rgba(255,255,255,.06);
+
+    --rag-good:#10b981;                /* ← --rag-good-ink                  */
+    --rag-warn:#f59e0b;                /* ← --rag-warning-ink               */
+    --rag-bad:#fb7185;                 /* ← --rag-critical-ink              */
+    --rag-bad-soft:#c2596b;            /* ← --rag-critical-soft-ink         */
+    --rag-info:#93b8ff;                /* ← --rag-info-ink                  */
+
+    --dot-good:#10b981;                /* ← --rag-good-dot                  */
+    --dot-warn:#f59e0b;                /* ← --rag-warning-dot               */
+    --dot-bad:#fb7185;                 /* ← --rag-critical-dot              */
+
+    --chart-ink:#ffffff;               /* ← --ct-chart-ink                  */
+    --chart-grid:rgba(148,163,184,.18);
+    --series-neutral:#8b9cb8;          /* ← --ct-series-neutral             */
+    --series-green:#10b981;            /* ← --ct-series-green               */
+    --series-amber:#f59e0b;            /* ← --ct-series-amber               */
+    --series-blue:#60a5fa;             /* ← --ct-series-blue                */
+    --series-cyan:#22d3ee;              /* ← --ct-series-cyan                 */
+    --series-teal:#2dd4bf;
+    --series-rose:#fb7185;             /* ← --ct-series-rose                */
+    --series-violet:#a78bfa;           /* ← --ct-series-violet              */
+
+    --st-ok-1:#a7f3d0;   --st-ok-2:#34d399;   --st-ok-3:#059669;
+    --st-risk-1:#fde68a;
+    --st-late-1:#fecdd3; --st-late-2:#fb7185; --st-late-3:#e11d48;
+
+    --avatar-bg:#1e2a5e;
+    --avatar-fg:#c7d2fe;
+  }
+}
+
+
+/* ==========================================================================
+   KHỐI 3 · TỐI — người dùng chọn tay, thắng cả cài đặt hệ điều hành
+   Cùng bộ 65 token và cùng giá trị với KHỐI 2.
+   ========================================================================== */
+:root[data-theme="dark"]{
+  --s-page:#060a22;
+  --s-group:#0a1440;
+  --s-panel:#0a1440;
+  --s-card:#0c163a;
+  --s-hover:#13245e;
+
+  --fg:#ffffff;
+  --fg-dim:rgba(255,255,255,.74);
+  --fg-mute:rgba(255,255,255,.52);
+
+  --border:rgba(80,150,255,.14);
+  --hairline:rgba(255,255,255,.06);
+  --cell-bg:rgba(255,255,255,.03);
+  --cell-border:rgba(255,255,255,.05);
+  --track:rgba(255,255,255,.1);
+  --row-total:rgba(80,150,255,.06);
+  --row-kid:rgba(255,255,255,.015);
+  --th-bg:#0d1836;
+
+  --tip-bg:#081b3a;
+  --tip-fg:#ffffff;
+
+  --tip-blue:#60a5fa;
+  --tip-red:#fb7185;
+  --tip-green:#10b981;
+  --tip-violet:#a78bfa;
+  --tip-yellow:#fde047;
+  --tip-cyan:#22d3ee;
+  --tip-teal:#2dd4bf;
+  --tip-neutral:#8b9cb8;
+
+  --tint-a:10%;
+  --edge-a:20%;
+
+  --lift:0 8px 24px rgba(0,0,0,.45);
+
+  --brand:oklch(0.65 0.2 264);
+  --brand-fg:oklch(0.985 0 0);
+  --brand-wash:color-mix(in srgb, var(--brand) 16%, transparent);
+  --row-hover:color-mix(in srgb, var(--accent-blue) 7%, transparent);
+
+  --accent-blue:#4f8dff;
+  --accent-blue-deep:#93b8ff;
+  --accent-yellow:#fde047;
+
+  --key-hi:rgba(255,255,255,.08);
+  --btn-hover:rgba(255,255,255,.06);
+
+  --rag-good:#10b981;
+  --rag-warn:#f59e0b;
+  --rag-bad:#fb7185;
+  --rag-bad-soft:#c2596b;
+  --rag-info:#93b8ff;
+
+  --dot-good:#10b981;
+  --dot-warn:#f59e0b;
+  --dot-bad:#fb7185;
+
+  --chart-ink:#ffffff;
+  --chart-grid:rgba(148,163,184,.18);
+  --series-neutral:#8b9cb8;
+  --series-green:#10b981;
+  --series-amber:#f59e0b;
+  --series-blue:#60a5fa;
+  --series-cyan:#22d3ee;
+  --series-teal:#2dd4bf;
+  --series-rose:#fb7185;
+  --series-violet:#a78bfa;
+
+  --st-ok-1:#a7f3d0;   --st-ok-2:#34d399;   --st-ok-3:#059669;
+  --st-risk-1:#fde68a;
+  --st-late-1:#fecdd3; --st-late-2:#fb7185; --st-late-3:#e11d48;
+
+  --avatar-bg:#1e2a5e;
+  --avatar-fg:#c7d2fe;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--s-page);color:var(--fg);
+  font:400 14px/1.5 Inter,"Segoe UI",system-ui,sans-serif;
+  font-variant-numeric:tabular-nums;
+}
+button{font-family:inherit}
+button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.spacer{flex:1}
+.shell{max-width:1560px;margin:0 auto;padding:0 0 28px}
+
+/* ------------------------------------------------------------- top bar */
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 16px}
+.iconbtn{width:32px;height:32px;border:none;background:none;border-radius:8px;color:var(--fg-dim);display:grid;place-items:center;cursor:pointer}
+.iconbtn:hover{background:var(--btn-hover);color:var(--fg)}
+.iconbtn.on{background:var(--brand);color:var(--brand-fg)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--avatar-bg);color:var(--avatar-fg);display:grid;place-items:center;font-size:12px;font-weight:600}
+
+/* chọn theme — segmented, hai lựa chọn rõ ràng */
+.themepick{display:inline-flex;padding:2px;gap:2px;background:var(--cell-bg);border:1px solid var(--border);border-radius:9px}
+.themepick button{
+  display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:none;border-radius:7px;
+  background:none;color:var(--fg-mute);font-size:12px;font-weight:500;cursor:pointer;
+}
+.themepick button svg{width:14px;height:14px}
+.themepick button:hover{color:var(--fg)}
+.themepick button[aria-pressed="true"]{background:var(--s-card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+
+/* ----------------------------------------------------------- view head */
+.viewhead{display:flex;align-items:center;gap:12px;padding:2px 16px 8px}
+.viewicon{width:38px;height:38px;flex:none;border-radius:10px;background:color-mix(in srgb, var(--accent-blue) 14%, transparent);color:var(--accent-blue);display:grid;place-items:center}
+.viewtitle{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.fresh{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--fg-mute);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--st-ok-2);flex:none}
+.hbtn{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;padding:8px 13px;border:1px solid var(--border);background:var(--s-card);color:var(--fg-dim);border-radius:8px;cursor:pointer}
+.hbtn:hover{background:var(--s-hover);color:var(--fg)}
+
+/* ------------------------------------------------------------- filters */
+.filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 16px 14px}
+/* Hai nut phai di cung nhau khi thanh filter wrap — truoc day .spacer{flex:1}
+   day `Dat lai` o lai hang tren con `Ap dung` roi xuong hang rieng. */
+.filterbar .btnpair{display:flex;align-items:center;gap:10px;margin-left:auto}
+.fsel{display:flex;align-items:baseline;gap:7px;padding:8px 12px;background:var(--s-card);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;color:var(--fg)}
+.fsel .lb{color:var(--fg-mute)}
+.fsel .vl{font-weight:600}
+.fsel .caret{color:var(--fg-mute);font-size:10px;margin-left:2px}
+.gobtn{display:inline-flex;align-items:center;gap:7px;background:var(--brand);color:var(--brand-fg);border:1px solid var(--brand);font-size:13px;font-weight:600;padding:8px 15px;border-radius:8px;cursor:pointer}
+.gobtn:hover{filter:brightness(1.12)}
+
+.tabbar{display:flex;align-items:center;gap:8px;padding:0 16px 9px}
+.tabb{font-size:13px;font-weight:500;padding:8px 18px;border-radius:8px;border:1px solid transparent;background:none;color:var(--fg-dim);cursor:pointer}
+.tabb:hover{background:var(--btn-hover)}
+.tabb[aria-selected="true"]{background:var(--brand);color:var(--brand-fg);font-weight:600}
+
+.body{padding:0 16px;display:flex;flex-direction:column;gap:9px}
+
+/* ======================================================= dòng dẫn dắt */
+/* Mot hang duy nhat: chip · so · nhan · cau dan. `flex-wrap` de o khung hep
+   thi cau dan xuong dong chu khong tran ra. */
+.headline{
+  position:relative;border-radius:14px;padding:8px 12px;overflow:hidden;
+  background:var(--s-panel);border:1px solid var(--border);box-shadow:var(--lift);
+  display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+}
+.headline>.stripe{position:absolute;left:0;right:0;top:0;height:3px;background:var(--st-late-2)}
+.hl-chip{width:26px;height:26px;flex:none;align-self:center;border-radius:7px;display:grid;place-items:center;background:color-mix(in srgb, var(--st-late-2) 15%, transparent);color:var(--st-late-2)}
+.hl-chip svg{width:15px;height:15px}
+.hl-num{font-size:30px;font-weight:700;line-height:1;letter-spacing:-.03em;color:var(--st-late-2)}
+.hl-lb{font-size:13.5px;font-weight:600;color:var(--fg)}
+.hl-sub{margin-left:auto;font-size:12.5px;color:var(--fg-mute)}
+
+
+
+/* ===================================================== pipeline */
+.pipe{display:grid;gap:8px;align-items:stretch;grid-template-columns:1fr}
+/* HANG NGANG la CAU TRUC THONG TIN cua trang: chang 1 -> chang 2 -> chang 3.
+   Giu nguong 1080 nhu ban goc. Truoc do toi nang len 1280 de tranh the bi bop
+   con ~122px o dai 1080-1280 — sai tang: lam vay la bo luon hang ngang de chua
+   mot van de layout ben trong khung. Cach dung la giu hang ngang, con the ben
+   trong khung tu xuong 2-up qua @container ben duoi (nguong 470/310). */
+@media (min-width:1080px){.pipe{grid-template-columns:3fr auto 2fr auto 2fr}}
+/* Mui ten KHONG bi an khi xep doc — chi quay 90 do thanh mui xuong.
+   An no di la mat luon y nghia cua bo cuc pipeline: ba khung thanh ba panel
+   roi rac khong cho biet chang nao truoc chang nao. */
+.arrow{display:grid;place-items:center;color:var(--fg-mute);transform:rotate(90deg)}
+@media (min-width:1080px){.arrow{align-self:center;transform:none}}
+@media (prefers-reduced-motion:reduce){.arrow{transition:none}}
+/* container-type de cac the ben trong do CHINH KHUNG NAY, khong do viewport. */
+.stage{container-type:inline-size;background:var(--s-panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--lift);display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.stage-hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--hairline)}
+.stage-hd .nm{font-size:11.5px;font-weight:700;letter-spacing:.085em;text-transform:uppercase;color:var(--fg-dim)}
+.stage-hd .ct{font-size:15px;font-weight:700;color:var(--fg);margin-left:auto}
+.stage-hd .sh{font-size:11.5px;color:var(--fg-mute)}
+/* Ba track dung chung cho moi the trong cung mot hang: nhan / so / footer.
+   `1fr` o track nhan de nhan hut het cho du -> so va footer neo xuong day.
+   row-gap = 8px vi khi cac the deu span ca 3 track thi row-gap chinh la
+   khoang cach BEN TRONG the. */
+.stage-bd{padding:9px;display:grid;column-gap:8px;row-gap:7px;grid-template-columns:1fr;grid-template-rows:1fr auto auto;grid-auto-rows:1fr auto auto;flex:1}
+/* Nguong tinh tu nhan THAT, khong doan:
+     nhan dai nhat = `Late departure open` (19 ky tu) -> 2 dong o 12.5px in hoa
+     can ~90px, cong chip 26 + gap 8 + padding 26 => the toi thieu ~150px.
+   Nguong dat o MUC TOI THIEU con dung duoc, KHONG o muc de chiu:
+     Khi .pipe o che do ngang (>=1080px viewport), khung chang 1 rong ~415px va
+     chang 2/3 ~277px. Ban cu luon hien du 3/2/2 the o day, chi la nhan xuong 3
+     dong. Giu nguyen hanh vi do — HANG NGANG la cau truc thong tin, khong danh
+     doi. Viec hang so lech da do subgrid chua, khong phai do doi so cot.
+     3-up: 380px  ·  2-up: 250px  (do CONTENT BOX, khong cong padding)
+   Duoi nguong nay .pipe da xep doc nen khung rong ca hang, van du cho. */
+@container (min-width:250px){ .stage-bd.c3{grid-template-columns:repeat(2,1fr)} }
+@container (min-width:380px){ .stage-bd.c3{grid-template-columns:repeat(3,1fr)} }
+@container (min-width:250px){ .stage-bd.c2{grid-template-columns:repeat(2,1fr)} }
+
+/* subgrid: the KHONG tu chia hang ma dung chung ba track cua .stage-bd. Nho vay
+   track footer cao bang footer DAI NHAT trong hang, va hang so cua moi the nam
+   dung cung mot do cao — khong can doan truoc footer may dong.
+   Neu trinh duyet khong ho tro subgrid thi the tro ve grid thuong: van hien
+   dung, chi mat phan can hang. */
+.sc{
+  grid-row:span 3;
+  position:relative;display:grid;grid-template-rows:subgrid;overflow:hidden;
+  border-radius:10px;border:1px solid;padding:9px 10px;min-width:0;
+  background:linear-gradient(135deg,
+    color-mix(in srgb, var(--ink) var(--tint-a), transparent),
+    color-mix(in srgb, var(--ink) calc(var(--tint-a) / 3), transparent)), var(--s-card);
+  border-color:color-mix(in srgb, var(--ink) var(--edge-a), transparent);
+  transition:opacity .16s ease,transform .16s ease,box-shadow .16s ease,border-color .16s ease;
+}
+.sc>.accent{position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(to right, color-mix(in srgb, var(--ink) 88%, transparent), color-mix(in srgb, var(--ink) 26%, transparent))}
+/* flex-wrap: dau hieu `xu ly ngay` xuong dong rieng ngay duoi nhan. Dat o day
+   chu KHONG o footer, vi .sc-top la track `1fr` hut cho du — them noi dung vao
+   day khong doi vi tri cua hang so. */
+.sc-top{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;align-self:start}
+.sc-now{flex-basis:100%;display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--rag-warn)}
+.sc-chip{width:22px;height:22px;flex:none;border-radius:6px;display:grid;place-items:center;background:color-mix(in srgb, var(--ink) calc(var(--tint-a) * 1.8), transparent);color:var(--ink)}
+.sc-chip svg{width:14px;height:14px}
+/* Khong con min-height: cach chua 2 dong san la doan, va o khe 1080-1200px nhan
+   xuong 3 dong nen doan sai. Viec can hang so bang nhau da do .sc-top{flex:1} lo. */
+.sc-lb{flex:1;min-width:0;font-size:11.5px;font-weight:700;line-height:1.3;text-transform:uppercase;letter-spacing:.03em;color:var(--fg)}
+/* Hang so chua CA con so lan muc do nang, canh nhau tren cung mot dong de khong
+   them hang moi (subgrid dang chia 3 track: nhan / so / footer). */
+.sc-val{display:flex;align-items:baseline;gap:7px;font-size:24px;font-weight:700;line-height:1;letter-spacing:-.025em;color:var(--ink)}
+/* DO NANG — chieu thu hai cua trang. Truoc day MOI con so tren view Alert deu la
+   `dem chuyen`: mot don vi, mot phep gop, lap lai hon hai chuc lan. Nam chuyen tre
+   10 phut khac han nam chuyen tre 6 tieng, ma trang khong noi duoc dieu do. */
+.sc-sev{font-size:11px;font-weight:600;letter-spacing:0;color:var(--ink);opacity:.82;white-space:nowrap}
+/* stretch (khong phai end): footer chiem tron track nen ĐUONG KE border-top cua
+   moi the nam cung mot do cao. Voi `end` thi footer 1 dong bi day xuong day track
+   va duong ke lech so voi the co footer 2 dong. */
+.sc-foot{padding-top:5px;border-top:1px solid var(--hairline);font-size:11.5px;line-height:1.35;color:var(--fg-mute)}
+
+/* CHI o duoc tro NOI LEN — khong lam mo cac o khac.
+   Ban truoc dung `.stage:hover .sc{opacity:.28}`, hong hai lan:
+     (a) selector do 3 lop nen THANG `.sc:hover` 2 lop => chinh o dang tro cung mo
+     (b) khach muon o duoc tro NOI LEN, khong phai cac o kia chim di
+   Nay bo han co che lam mo. Hover = nhich len + vien theo mau cua chinh o + dam
+   tint len gap doi. Dam tint chay dung o CA HAI theme vi dua tren `--ink` cua
+   chinh o, khong dung `brightness()` (thu se bac mau tren nen sang). */
+.sc{cursor:pointer}
+.sc:hover{
+  transform:translateY(-3px);border-color:var(--ink);
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--ink) 72%, transparent), var(--lift);
+  background:linear-gradient(135deg,
+    color-mix(in srgb, var(--ink) calc(var(--tint-a) * 2), transparent),
+    color-mix(in srgb, var(--ink) calc(var(--tint-a) / 1.5), transparent)), var(--s-card);
+}
+
+@keyframes livePulse{
+  0%,100%{transform:scale(1)}
+  50%    {transform:scale(1.35)}
+}
+.dot{animation:livePulse 1.8s ease-in-out infinite}
+@keyframes urgentGlow{
+  0%,100%{border-color:color-mix(in srgb, var(--ink) var(--edge-a), transparent);box-shadow:0 0 0 0 transparent}
+  50%    {border-color:var(--ink);box-shadow:0 0 0 4px color-mix(in srgb, var(--ink) 26%, transparent), 0 0 26px color-mix(in srgb, var(--ink) 34%, transparent)}
+}
+.sc.urgent{animation:urgentGlow 2s ease-in-out infinite}
+@keyframes chipGlow{
+  0%,100%{background:color-mix(in srgb, var(--ink) calc(var(--tint-a) * 1.8), transparent)}
+  50%    {background:color-mix(in srgb, var(--ink) 48%, transparent)}
+}
+.sc.urgent .sc-chip{animation:chipGlow 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.12}}
+.pulsedot{width:8px;height:8px;border-radius:50%;background:var(--ink);flex:none;animation:blink 1.4s ease-in-out infinite}
+
+@media (prefers-reduced-motion:reduce){
+  .dot,.sc.urgent,.sc.urgent .sc-chip,.pulsedot{animation:none}
+  .sc{transition:none}
+}
+
+/* ============================================================= bảng */
+.panel{background:var(--s-panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--lift);overflow:hidden}
+.panel-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--hairline)}
+.panel-hd h2{margin:0;font-size:15px;font-weight:600}
+.panel-hd .sub{font-size:12px;color:var(--fg-mute)}
+.tbtn{font-size:12.5px;font-weight:500;padding:7px 12px;border:1px solid var(--border);background:var(--s-card);color:var(--fg-dim);border-radius:7px;cursor:pointer}
+.tbtn:hover{background:var(--s-hover);color:var(--fg)}
+
+/* Theo dung thiet ke bang cua VFR: KHONG boc trong mot hop cuon doc rieng.
+   Bang to ra tu nhien theo noi dung, trang tu cuon — chi giu overflow-x cho
+   truong hop man hinh hep. */
+.tbl-scroll{overflow-x:auto}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:780px;font-size:13px}
+th,td{padding:6px 14px;text-align:left;border-bottom:1px solid var(--hairline);white-space:nowrap}
+th{
+  position:sticky;top:0;z-index:5;background:var(--th-bg);
+  font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-mute);
+  cursor:pointer;user-select:none;
+}
+th:hover{color:var(--fg)}
+th .sortmark{opacity:.35;margin-left:6px;font-size:9px}
+th[aria-sort] .sortmark{opacity:1;color:var(--brand)}
+td.n,th.n{text-align:right}
+td.risk{color:var(--st-late-2);font-weight:600}
+td.ok{color:var(--fg-mute)}
+tbody tr{transition:background .12s ease}
+tbody tr:hover td{background:var(--row-hover)}
+tr.total td{border-bottom:none;font-weight:600;background:var(--row-total)}
+tr.kid td{background:var(--row-kid)}
+tr.kid td:first-child{padding-left:44px;color:var(--fg-dim);font-size:12.5px}
+tr.kid td.n{font-size:12.5px}
+.hdot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px}
+/* Nut +/- vuong, dung nguyen kieu `.tw button` cua VFR — thay cho tam giac
+   xoay 90 do truoc day. */
+.tw{display:inline-flex;align-items:center;gap:6px}
+.tw button{
+  width:17px;height:17px;flex:none;border:1px solid var(--border);border-radius:4px;
+  background:var(--s-card);color:var(--fg-dim);cursor:pointer;font:700 11px/1 Inter,sans-serif;
+  display:grid;place-items:center;padding:0;
+}
+.tw button:hover{background:var(--s-hover)}
+.tw-ph{display:inline-block;width:17px}
+.wname{font-weight:600;color:var(--fg)}
+
+.dist{display:grid;gap:4px;min-width:200px}
+.dist-bar{position:relative;display:flex;height:12px;gap:2px;border-radius:999px;overflow:hidden;background:var(--track)}
+.dist-bar span{display:block;height:100%}
+.dist-bar .tick{position:absolute;top:-3px;bottom:-3px;width:1px;background:color-mix(in srgb, var(--fg) 40%, transparent)}
+.dist-lb{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--fg-mute)}
+.dist-lb b{font-weight:600}
+.dist-lb b.hi{color:var(--st-late-2)}
+.dist-lb b.mid{color:var(--rag-warn)}
+.dist-lb b.lo{color:var(--st-ok-2)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <button class="iconbtn" type="button" aria-label="Thu gọn thanh cạnh">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+    </button>
+    <button class="iconbtn" type="button" aria-label="Quay lại">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+    </button>
+    <div class="spacer"></div>
+
+    <div class="themepick" role="group" aria-label="Chọn chủ đề">
+      <button type="button" id="pickLight" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+        Sáng
+      </button>
+      <button type="button" id="pickDark" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg>
+        Tối
+      </button>
+    </div>
+
+    <button class="iconbtn" type="button" aria-label="Ngôn ngữ">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 5h7"/><path d="M7 5c0 6-3 9-3 9"/><path d="M5 12c3 0 6 2 6 2"/><path d="m13 20 4-10 4 10"/><path d="M14.5 17h5"/></svg>
+    </button>
+    <button class="iconbtn" type="button" aria-label="Cài đặt">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 11.5 4a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 19.4 11a2 2 0 1 1 0 4Z"/></svg>
+    </button>
+    <button class="iconbtn on" type="button" aria-label="Trợ lý">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+    <span class="avatar">SA</span>
+  </div>
+
+  <div class="viewhead">
+    <span class="viewicon" aria-hidden="true">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>
+    </span>
+    <span class="viewtitle">LOGISTICS MONITORING</span>
+    <div class="spacer"></div>
+    <div class="fresh"><span class="dot"></span> Cập nhật 14:44:58 · auto-refresh 60s</div>
+    <button class="hbtn" type="button" aria-label="Làm mới">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+    </button>
+    <button class="hbtn" type="button">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      Sửa
+    </button>
+  </div>
+
+  <div class="filterbar">
+    <button class="fsel" type="button"><span class="lb">Kho</span><span class="vl">All</span><span class="caret">▾</span></button>
+    <button class="fsel" type="button"><span class="lb">Khu vực</span><span class="vl">All</span><span class="caret">▾</span></button>
+    <button class="fsel" type="button"><span class="lb">Kênh bán</span><span class="vl">All</span><span class="caret">▾</span></button>
+    <button class="fsel" type="button"><span class="lb">Nhà vận tải</span><span class="vl">All</span><span class="caret">▾</span></button>
+    <button class="fsel" type="button"><span class="lb">Loại ngày</span><span class="vl">Delivery Cycle</span><span class="caret">▾</span></button>
+    <button class="fsel" type="button"><span class="lb">Khoảng ngày</span><span class="vl">09/09/2026</span><span class="caret">▾</span></button>
+    <div class="btnpair">
+      <button class="hbtn" type="button">Đặt lại</button>
+      <button class="gobtn" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+        Áp dụng
+      </button>
+    </div>
+  </div>
+
+  <div class="tabbar" role="tablist" aria-label="Chế độ xem">
+    <button class="tabb" role="tab" aria-selected="true" type="button">Biểu đồ</button>
+    <button class="tabb" role="tab" aria-selected="false" type="button">Chi tiết bảng</button>
+  </div>
+
+  <div class="body">
+
+    <!-- Rut ve MOT HANG. Ban truoc co them dai cau thanh + chu giai ngay tren ba
+         khung chang — khach nhan xet no LAP LAI y cua chinh cac o ben duoi, va an
+         mot khoang lon. Nay chi con con so va cau dan. -->
+    <section class="headline" aria-labelledby="hl">
+      <span class="hl-chip" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      </span>
+      <span class="hl-num" data-count="68">68</span>
+      <span class="hl-lb" id="hl">chuyến cần xử lý</span>
+      <span class="hl-sub">40% của 171 chuyến trong ngày</span>
+    </section>
+
+    <div class="pipe">
+
+      <section class="stage" aria-labelledby="s1">
+        <header class="stage-hd">
+          <span class="nm" id="s1">Trong kho</span>
+          <span class="ct" data-count="11">11</span><span class="sh">· 6%</span>
+        </header>
+        <div class="stage-bd c3">
+          <div class="sc" style="--ink:var(--st-ok-1)">
+            <div class="accent"></div>
+            <div class="sc-top">
+              <span class="sc-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+              <span class="sc-lb">Bình thường</span>
+            </div>
+            <div class="sc-val" data-count="5">5</div>
+            <div class="sc-foot">45% của chặng</div>
+          </div>
+
+          <div class="sc urgent" data-link="risk" style="--ink:var(--st-risk-1)">
+            <div class="accent"></div>
+            <div class="sc-top">
+              <span class="sc-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+              <span class="sc-lb">Có rủi ro</span>
+              <span class="sc-now"><span class="pulsedot"></span>xử lý ngay</span>
+            </div>
+            <div class="sc-val" data-count="2">2</div>
+            <div class="sc-foot">18% của chặng</div>
+          </div>
+
+          <div class="sc" data-link="late-wh" style="--ink:var(--st-late-1)">
+            <div class="accent"></div>
+            <div class="sc-top">
+              <span class="sc-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+              <span class="sc-lb">Đã trễ, chưa rời kho</span>
+            </div>
+            <div class="sc-val"><span data-count="4">4</span><span class="sc-sev" title="Trung vị số phút quá hạn bắt buộc rời kho">trễ 35 phút</span></div>
+            <div class="sc-foot">36% của chặng</div>
+          </div>
+        </div>
+      </section>
+
+      <span class="arrow" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 5 7 7-7 7"/></svg>
+      </span>
+
+      <section class="stage" aria-labelledby="s2">
+        <header class="stage-hd">
+          <span class="nm" id="s2">Trên đường giao</span>
+          <span class="ct" data-count="25">25</span><span class="sh">· 15%</span>
+        </header>
+        <div class="stage-bd c2">
+          <div class="sc" style="--ink:var(--st-ok-2)">
+            <div class="accent"></div>
+            <div class="sc-top">
+              <span class="sc-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 17V6a1 1 0 0 0-1-1H2v12h12Z"/><path d="M14 9h4l4 4v4h-8"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg></span>
+              <span class="sc-lb">Rời kho đúng hạn</span>
+            </div>
+            <div class="sc-val" data-count="20">20</div>
+            <div class="sc-foot">80% của chặng</div>
+          </div>
+
+          <div class="sc" data-link="late-go" style="--ink:var(--st-late-2)">
+            <div class="accent"></div>
+            <div class="sc-top">
+              <span class="sc-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 17V6a1 1 0 0 0-1-1H2v12h12Z"/><path d="M14 9h4l4 4v4h-8"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg></span>
+              <span class="sc-lb">Rời kho trễ</span>
+            </div>
+            <div class="sc-val"><span data-count="5">5</span><span class="sc-sev" title="Trung vị phut_tre_roi_kho của nhóm này">trễ 52 phút</span></div>
+            <div class="sc-foot">20% của chặng</div>
+          </div>
+        </div>
+      </section>
+
+      <span class="arrow" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 5 7 7-7 7"/></svg>
+      </span>
+
+      <section class="stage" aria-labelledby="s3">
+        <header class="stage-hd">
+          <span class="nm" id="s3" title="Chuyến đã giao — mốc cuối của vòng đời">Đã giao</span>
+          <span class="ct" data-count="135">135</span><span class="sh">· 79%</span>
+        </header>
+        <div class="stage-bd c2">
+          <div class="sc" style="--ink:var(--st-ok-3)">
+            <div class="accent"></div>
+            <div class="sc-top">
+              <span class="sc-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <span class="sc-lb">Giao đúng hạn</span>
+            </div>
+            <div class="sc-val" data-count="78">78</div>
+            <div class="sc-foot">58% của chặng</div>
+          </div>
+
+          <div class="sc" data-link="late-dv" style="--ink:var(--st-late-3)">
+            <div class="accent"></div>
+            <div class="sc-top">
+              <span class="sc-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+              <span class="sc-lb">Giao trễ</span>
+            </div>
+            <div class="sc-val"><span data-count="57">57</span><span class="sc-sev" title="Trung vị phut_tre_giao_npp của nhóm này">trễ 2g10</span></div>
+            <div class="sc-foot">42% của chặng</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <section class="panel" aria-labelledby="tb">
+      <!-- Hai nut gop vao chinh hang tieu de: hang cong cu rieng ton ~45px ma chi
+           chua hai nut nho. Bo cau `Bam tieu de cot de sap xep` — dau mui ten tren
+           moi tieu de cot da noi dieu do. -->
+      <div class="panel-hd">
+        <h2 id="tb">Cảnh báo đơn trễ</h2>
+        <span class="sub">171 chuyến · 40% có rủi ro</span>
+        <div class="spacer"></div>
+        <button class="tbtn" type="button" id="expandAll">Mở tất cả</button>
+        <button class="tbtn" type="button" id="collapseAll">Đóng tất cả</button>
+      </div>
+      <div class="tbl-scroll">
+        <table id="alertTable">
+          <thead>
+            <tr>
+              <th data-sort="name">Kho / Nhà vận tải <span class="sortmark">▲▼</span></th>
+              <th class="n" data-sort="total">Tổng chuyến <span class="sortmark">▲▼</span></th>
+              <th class="n" data-sort="risk"><span class="hdot" style="background:var(--st-late-2)"></span>Có rủi ro <span class="sortmark">▲▼</span></th>
+              <th class="n" data-sort="ok"><span class="hdot" style="background:var(--st-ok-2)"></span>Ổn định <span class="sortmark">▲▼</span></th>
+              <th data-sort="pct">Phân bố · % rủi ro <span class="sortmark">▲▼</span></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  /* ------------------------------------------------------ chọn chủ đề */
+  var root = document.documentElement;
+  var bLight = document.getElementById('pickLight');
+  var bDark  = document.getElementById('pickDark');
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+  function stored(key, val) {
+    try { return val === undefined ? localStorage.getItem(key) : localStorage.setItem(key, val); }
+    catch (e) { return null; }
+  }
+  function resolved() {
+    var t = root.getAttribute('data-theme');
+    if (t === 'light' || t === 'dark') return t;
+    return mq.matches ? 'dark' : 'light';
+  }
+  function paint() {
+    var r = resolved();
+    bLight.setAttribute('aria-pressed', r === 'light' ? 'true' : 'false');
+    bDark.setAttribute('aria-pressed', r === 'dark' ? 'true' : 'false');
+  }
+  var saved = stored('ct-alert-theme');
+  if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
+  paint();
+  mq.addEventListener('change', paint);
+  bLight.addEventListener('click', function () { root.setAttribute('data-theme', 'light'); stored('ct-alert-theme', 'light'); paint(); });
+  bDark.addEventListener('click',  function () { root.setAttribute('data-theme', 'dark');  stored('ct-alert-theme', 'dark');  paint(); });
+
+  /* ---------------------------------------------------------------------- *
+   * Dữ liệu thật, đủ bốn kho. Cộng dồn đã kiểm:
+   *   BKD1  65+10+8+3+1 = 87  · 23+2+2+1+0 = 28 · 42+8+6+2+1 = 59
+   *   VN821 12+6+2      = 20  · 4+1+0      = 5  · 8+5+2      = 15
+   *   NKD   45+8        = 53  · 27+6       = 33 · 18+2       = 20
+   *   VN831 11          = 11  · 2          = 2  · 9          = 9
+   *   Tổng  87+20+53+11 = 171 · 28+5+33+2  = 68 · 59+15+20+9 = 103
+   * ---------------------------------------------------------------------- */
+  var DATA = [
+    { name:'BKD1',  total:87, risk:28, ok:59, pct:32, kids:[
+      { name:'ANH SON',     total:65, risk:23, ok:42, pct:35 },
+      { name:'NGUYEN PHAT', total:10, risk:2,  ok:8,  pct:20 },
+      { name:'THANH AN',    total:8,  risk:2,  ok:6,  pct:25 },
+      { name:'HVP',         total:3,  risk:1,  ok:2,  pct:33 },
+      { name:'HOA PHAT',    total:1,  risk:0,  ok:1,  pct:0  }
+    ]},
+    { name:'VN821', total:20, risk:5,  ok:15, pct:25, kids:[
+      { name:'ANH SON',     total:12, risk:4,  ok:8,  pct:33 },
+      { name:'THANH AN',    total:6,  risk:1,  ok:5,  pct:17 },
+      { name:'NGUYEN PHAT', total:2,  risk:0,  ok:2,  pct:0  }
+    ]},
+    { name:'NKD',   total:53, risk:33, ok:20, pct:62, kids:[
+      { name:'HDA', total:45, risk:27, ok:18, pct:60 },
+      { name:'TLL', total:8,  risk:6,  ok:2,  pct:75 }
+    ]},
+    { name:'VN831', total:11, risk:2,  ok:9,  pct:18, kids:[
+      { name:'HDA', total:11, risk:2,  ok:9,  pct:18 }
+    ]}
+  ];
+  var TOTAL = { total:171, risk:68, ok:103, pct:40 };
+  var BASELINE = 40;
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var band = function (p) { return p >= 50 ? 'hi' : p >= 20 ? 'mid' : 'lo'; };
+
+  function distCell(pct, withTick, note) {
+    var tick = withTick ? '<span class="tick" style="left:' + BASELINE + '%"></span>' : '';
+    return '<div class="dist">' +
+      '<div class="dist-bar" role="img" aria-label="' + pct + '% có rủi ro">' +
+        '<span style="flex:' + pct + ';background:var(--st-late-2)"></span>' +
+        '<span style="flex:' + (100 - pct) + ';background:var(--st-ok-2)"></span>' + tick +
+      '</div>' +
+      '<div class="dist-lb"><b class="' + band(pct) + '">' + pct + '%</b><span>' + (note || '') + '</span></div>' +
+    '</div>';
+  }
+
+  var tbody = document.querySelector('#alertTable tbody');
+  var open = {};
+  /* Mặc định THU GỌN — dùng mẫu VFR: bấm nút + mới mở ra, không phải cuộn
+     xuống xem hết. Trước đây mặc định mở hết + cuộn trong hộp cao 300px. */
+  DATA.forEach(function (w) { open[w.name] = false; });
+  var order = DATA.slice(), sortKey = null, sortDir = 1;
+
+  function render() {
+    var html = '';
+    order.forEach(function (w, idx) {
+      var isOpen = open[w.name];
+      var twist = w.kids.length
+        ? '<button type="button" aria-expanded="' + isOpen + '" data-wh="' + w.name + '" aria-label="' +
+          (isOpen ? 'Thu gọn ' : 'Mở rộng ') + w.name + '">' + (isOpen ? '−' : '+') + '</button>'
+        : '<span class="tw-ph" aria-hidden="true"></span>';
+      html += '<tr>' +
+        '<td><span class="tw">' + twist + '<span class="wname">' + w.name + '</span></span></td>' +
+        '<td class="n">' + w.total + '</td>' +
+        '<td class="n risk">' + w.risk + '</td>' +
+        '<td class="n ok">' + w.ok + '</td>' +
+        '<td>' + distCell(w.pct, true, idx === 0 ? 'vạch = mức chung 40%' : '') + '</td>' +
+      '</tr>';
+      if (isOpen) {
+        w.kids.forEach(function (k) {
+          html += '<tr class="kid">' +
+            '<td>' + k.name + '</td>' +
+            '<td class="n">' + k.total + '</td>' +
+            '<td class="n risk">' + (k.risk === 0 ? '—' : k.risk) + '</td>' +
+            '<td class="n ok">' + k.ok + '</td>' +
+            '<td>' + distCell(k.pct, true, '') + '</td>' +
+          '</tr>';
+        });
+      }
+    });
+    html += '<tr class="total">' +
+      '<td><span class="tw"><span class="tw-ph" aria-hidden="true"></span><span class="wname">Tổng</span></span></td>' +
+      '<td class="n">' + TOTAL.total + '</td>' +
+      '<td class="n risk">' + TOTAL.risk + '</td>' +
+      '<td class="n ok">' + TOTAL.ok + '</td>' +
+      '<td>' + distCell(TOTAL.pct, false, 'mức chung') + '</td>' +
+    '</tr>';
+    tbody.innerHTML = html;
+  }
+  render();
+
+  tbody.addEventListener('click', function (e) {
+    var t = e.target.closest('button[data-wh]');
+    if (!t) return;
+    open[t.dataset.wh] = !open[t.dataset.wh];
+    render();
+  });
+  document.getElementById('expandAll').addEventListener('click', function () {
+    DATA.forEach(function (w) { open[w.name] = true; }); render();
+  });
+  document.getElementById('collapseAll').addEventListener('click', function () {
+    DATA.forEach(function (w) { open[w.name] = false; }); render();
+  });
+
+  document.querySelectorAll('#alertTable th[data-sort]').forEach(function (th) {
+    th.addEventListener('click', function () {
+      var key = th.dataset.sort;
+      sortDir = sortKey === key ? -sortDir : 1;
+      sortKey = key;
+      order = DATA.slice().sort(function (a, b) {
+        var x = a[key], y = b[key];
+        return (typeof x === 'string' ? x.localeCompare(y) : x - y) * sortDir;
+      });
+      document.querySelectorAll('#alertTable th[data-sort]').forEach(function (o) { o.removeAttribute('aria-sort'); });
+      th.setAttribute('aria-sort', sortDir === 1 ? 'ascending' : 'descending');
+      render();
+    });
+  });
+
+
+  /* --------------------------------------------- số đếm lên khi mở trang */
+  if (!reduce) {
+    document.querySelectorAll('[data-count]').forEach(function (el) {
+      var end = Number(el.dataset.count), t0 = null, dur = 620;
+      el.textContent = '0';
+      function step(ts) {
+        if (t0 === null) t0 = ts;
+        var p = Math.min((ts - t0) / dur, 1);
+        el.textContent = Math.round(end * (1 - Math.pow(1 - p, 3)));
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  }
+})();
+</script>
+</body>
+</html>

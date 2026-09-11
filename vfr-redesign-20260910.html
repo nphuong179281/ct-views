@@ -1,0 +1,1462 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VFR — Tỷ lệ sử dụng xe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* ============================================================================
+   VFR — Tỷ lệ sử dụng xe · bản đề xuất, SÁNG + TỐI.
+   Mart GỬI THẦU · slg_datamart.rc_vfr_gui_thau · 01–31/08/2026 · Ngày gửi thầu.
+
+   Bộ token bên dưới là bản copy nguyên văn của `06-design/ct-design-tokens.css`.
+   ĐỪNG sửa trực tiếp ở đây: sửa file token rồi copy lại, và chạy
+   `python 06-design/check-tokens.py` để chắc hai bên không trôi khỏi nhau.
+   ========================================================================== */
+
+/* ==========================================================================
+   KHỐI 1 · SÁNG
+   ========================================================================== */
+:root{
+  /* --- bề mặt, bốn bậc ------------------------------------------------- */
+  --s-page:#f7f9fc;                    /* ← --ct-surface-950 · nền trang    */
+  --s-group:#eef2f8;                   /* ← --ct-surface-900 · khung nhóm   */
+  --s-panel:#ffffff;                   /* ← --ct-card                       */
+  --s-card:#ffffff;                    /* ← --ct-card                       */
+  --s-hover:#f1f5fb;                   /* ← --ct-card-hover                 */
+
+  /* --- chữ -------------------------------------------------------------- */
+  --fg:#1f2937;                        /* ← --ct-txt                        */
+  --fg-dim:#4b5563;                    /* ← --ct-txt-dim                    */
+  --fg-mute:#6b7280;                   /* ← --ct-txt-mute                   */
+
+  /* --- đường kẻ, ô, dải ------------------------------------------------- */
+  --border:#e5e7eb;                    /* ← --ct-glass-border               */
+  --hairline:#eef1f5;                  /* ← --ct-hairline                   */
+  --cell-bg:#f7f9fc;                   /* ← --ct-cell-bg                    */
+  --cell-border:#e5e7eb;               /* ← --ct-cell-border                */
+  --track:#e5e7eb;                     /* ← --ct-track · rãnh của thanh     */
+  --row-total:#f2f7fd;                 /* ← --ct-total-bg · dòng Tổng       */
+  --row-kid:#fbfcfe;                   /* [LỆCH] dòng con của bảng cây      */
+  --th-bg:#f7f9fc;                     /* [LỆCH] nền tiêu đề bảng           */
+
+  /* --- tooltip ---------------------------------------------------------- */
+  --tip-bg:#081b3a;                    /* ← --ct-tooltip-bg                 */
+  --tip-fg:#ffffff;                    /* ← --ct-tooltip-fg                 */
+
+  /* --- màu chữ TRONG tooltip -------------------------------------------- */
+  --tip-blue:#60a5fa;
+  --tip-red:#fb7185;
+  --tip-green:#10b981;
+  --tip-violet:#a78bfa;
+  --tip-yellow:#fde047;
+  --tip-cyan:#22d3ee;
+  --tip-teal:#2dd4bf;
+  --tip-neutral:#8b9cb8;
+
+  /* --- alpha của card craft --------------------------------------------- */
+  --tint-a:12%;                        /* ← --ct-tint-a                     */
+  --edge-a:34%;                        /* ← --ct-edge-a                     */
+
+  /* --- độ nổi ----------------------------------------------------------- */
+  --lift:0 10px 15px -3px rgba(17,24,39,.08), 0 4px 6px -4px rgba(17,24,39,.08);
+
+  /* --- màu tương tác ---------------------------------------------------- */
+  --brand:oklch(0.41 0.29 264);        /* ← --primary                       */
+  --brand-fg:oklch(0.985 0 0);         /* ← --primary-foreground            */
+  --brand-wash:color-mix(in srgb, var(--brand) 10%, transparent);
+  --row-hover:color-mix(in srgb, var(--brand) 5%, transparent);
+
+  /* --- màu nhấn thông tin ----------------------------------------------- */
+  --accent-blue:#1e88e5;               /* ← --ct-brand-blue                 */
+  --accent-blue-deep:#1565c0;          /* ← --ct-brand-blue-light           */
+  --accent-yellow:#ca8a04;             /* [LỆCH] không có trong source      */
+
+  /* --- lớp phủ trung tính ----------------------------------------------- */
+  --key-hi:rgba(17,24,39,.05);
+  --btn-hover:rgba(17,24,39,.045);
+
+  /* --- RAG · mực, dùng cho CHỮ (cần 4,5:1) ------------------------------ */
+  --rag-good:#15803d;                  /* ← --rag-good-ink                  */
+  --rag-warn:#b45309;                  /* ← --rag-warning-ink               */
+  --rag-bad:#be123c;                   /* ← --rag-critical-ink              */
+  --rag-bad-soft:#e11d48;              /* ← --rag-critical-soft-ink         */
+  --rag-info:#1565c0;                  /* ← --rag-info-ink                  */
+
+  /* --- RAG · đốm, dùng cho MẢNG TÔ (chỉ cần 3:1) ------------------------ */
+  --dot-good:#22c55e;                  /* ← --rag-good-dot                  */
+  --dot-warn:#f59e0b;                  /* ← --rag-warning-dot               */
+  --dot-bad:#ef476f;                   /* ← --rag-critical-dot              */
+
+  /* --- chart ------------------------------------------------------------ */
+  --chart-ink:#424a53;                 /* ← --ct-chart-ink                  */
+  --chart-grid:rgba(100,116,139,.22);  /* [LỆCH] không có trong source      */
+  --series-neutral:#64748b;            /* ← --ct-series-neutral             */
+  --series-green:#047857;              /* ← --ct-series-green               */
+  --series-amber:#b45309;              /* ← --ct-series-amber               */
+  --series-blue:#1d4ed8;               /* ← --ct-series-blue                */
+  --series-cyan:#0e7490;
+  --series-teal:#0f766e;
+  --series-rose:#be123c;               /* ← --ct-series-rose                */
+  --series-violet:#6d28d9;             /* ← --ct-series-violet              */
+
+  /* --- L3 · hue = trạng thái · độ nhạt = chặng -------------------------- */
+  --st-ok-1:#059669;   --st-ok-2:#047857;   --st-ok-3:#064e3b;
+  --st-risk-1:#d97706;
+  --st-late-1:#f43f5e; --st-late-2:#be123c; --st-late-3:#881337;
+
+  /* --- chrome ngoài hệ token -------------------------------------------- */
+  --avatar-bg:#e0e7ff;
+  --avatar-fg:#3730a3;
+}
+
+/* ==========================================================================
+   KHỐI 2 · TỐI — theo hệ điều hành, khi người dùng chưa chọn tay
+   ========================================================================== */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --s-page:#060a22;
+    --s-group:#0a1440;
+    --s-panel:#0a1440;
+    --s-card:#0c163a;
+    --s-hover:#13245e;
+
+    --fg:#ffffff;
+    --fg-dim:rgba(255,255,255,.74);
+    --fg-mute:rgba(255,255,255,.52);
+
+    --border:rgba(80,150,255,.14);
+    --hairline:rgba(255,255,255,.06);
+    --cell-bg:rgba(255,255,255,.03);
+    --cell-border:rgba(255,255,255,.05);
+    --track:rgba(255,255,255,.1);
+    --row-total:rgba(80,150,255,.06);
+    --row-kid:rgba(255,255,255,.015);
+    --th-bg:#0d1836;
+
+    --tip-bg:#081b3a;
+    --tip-fg:#ffffff;
+
+    --tip-blue:#60a5fa;
+    --tip-red:#fb7185;
+    --tip-green:#10b981;
+    --tip-violet:#a78bfa;
+    --tip-yellow:#fde047;
+    --tip-cyan:#22d3ee;
+    --tip-teal:#2dd4bf;
+    --tip-neutral:#8b9cb8;
+
+    --tint-a:10%;
+    --edge-a:20%;
+
+    --lift:0 8px 24px rgba(0,0,0,.45);
+
+    --brand:oklch(0.65 0.2 264);
+    --brand-fg:oklch(0.985 0 0);
+    --brand-wash:color-mix(in srgb, var(--brand) 16%, transparent);
+    --row-hover:color-mix(in srgb, var(--accent-blue) 7%, transparent);
+
+    --accent-blue:#4f8dff;
+    --accent-blue-deep:#93b8ff;
+    --accent-yellow:#fde047;
+
+    --key-hi:rgba(255,255,255,.08);
+    --btn-hover:rgba(255,255,255,.06);
+
+    --rag-good:#10b981;
+    --rag-warn:#f59e0b;
+    --rag-bad:#fb7185;
+    --rag-bad-soft:#c2596b;
+    --rag-info:#93b8ff;
+
+    --dot-good:#10b981;
+    --dot-warn:#f59e0b;
+    --dot-bad:#fb7185;
+
+    --chart-ink:#ffffff;
+    --chart-grid:rgba(148,163,184,.18);
+    --series-neutral:#8b9cb8;
+    --series-green:#10b981;
+    --series-amber:#f59e0b;
+    --series-blue:#60a5fa;
+    --series-cyan:#22d3ee;
+    --series-teal:#2dd4bf;
+    --series-rose:#fb7185;
+    --series-violet:#a78bfa;
+
+    --st-ok-1:#a7f3d0;   --st-ok-2:#34d399;   --st-ok-3:#059669;
+    --st-risk-1:#fde68a;
+    --st-late-1:#fecdd3; --st-late-2:#fb7185; --st-late-3:#e11d48;
+
+    --avatar-bg:#1e2a5e;
+    --avatar-fg:#c7d2fe;
+  }
+}
+
+/* ==========================================================================
+   KHỐI 3 · TỐI — người dùng chọn tay, thắng cả cài đặt hệ điều hành
+   Cùng bộ 58 token và cùng giá trị với KHỐI 2.
+   ========================================================================== */
+:root[data-theme="dark"]{
+  --s-page:#060a22;
+  --s-group:#0a1440;
+  --s-panel:#0a1440;
+  --s-card:#0c163a;
+  --s-hover:#13245e;
+
+  --fg:#ffffff;
+  --fg-dim:rgba(255,255,255,.74);
+  --fg-mute:rgba(255,255,255,.52);
+
+  --border:rgba(80,150,255,.14);
+  --hairline:rgba(255,255,255,.06);
+  --cell-bg:rgba(255,255,255,.03);
+  --cell-border:rgba(255,255,255,.05);
+  --track:rgba(255,255,255,.1);
+  --row-total:rgba(80,150,255,.06);
+  --row-kid:rgba(255,255,255,.015);
+  --th-bg:#0d1836;
+
+  --tip-bg:#081b3a;
+  --tip-fg:#ffffff;
+
+  --tip-blue:#60a5fa;
+  --tip-red:#fb7185;
+  --tip-green:#10b981;
+  --tip-violet:#a78bfa;
+  --tip-yellow:#fde047;
+  --tip-cyan:#22d3ee;
+  --tip-teal:#2dd4bf;
+  --tip-neutral:#8b9cb8;
+
+  --tint-a:10%;
+  --edge-a:20%;
+
+  --lift:0 8px 24px rgba(0,0,0,.45);
+
+  --brand:oklch(0.65 0.2 264);
+  --brand-fg:oklch(0.985 0 0);
+  --brand-wash:color-mix(in srgb, var(--brand) 16%, transparent);
+  --row-hover:color-mix(in srgb, var(--accent-blue) 7%, transparent);
+
+  --accent-blue:#4f8dff;
+  --accent-blue-deep:#93b8ff;
+  --accent-yellow:#fde047;
+
+  --key-hi:rgba(255,255,255,.08);
+  --btn-hover:rgba(255,255,255,.06);
+
+  --rag-good:#10b981;
+  --rag-warn:#f59e0b;
+  --rag-bad:#fb7185;
+  --rag-bad-soft:#c2596b;
+  --rag-info:#93b8ff;
+
+  --dot-good:#10b981;
+  --dot-warn:#f59e0b;
+  --dot-bad:#fb7185;
+
+  --chart-ink:#ffffff;
+  --chart-grid:rgba(148,163,184,.18);
+  --series-neutral:#8b9cb8;
+  --series-green:#10b981;
+  --series-amber:#f59e0b;
+  --series-blue:#60a5fa;
+  --series-cyan:#22d3ee;
+  --series-teal:#2dd4bf;
+  --series-rose:#fb7185;
+  --series-violet:#a78bfa;
+
+  --st-ok-1:#a7f3d0;   --st-ok-2:#34d399;   --st-ok-3:#059669;
+  --st-risk-1:#fde68a;
+  --st-late-1:#fecdd3; --st-late-2:#fb7185; --st-late-3:#e11d48;
+
+  --avatar-bg:#1e2a5e;
+  --avatar-fg:#c7d2fe;
+}
+
+/* ==========================================================================
+   NỀN CHUNG
+   ========================================================================== */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--s-page); color:var(--fg);
+  font:400 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* Container query — cùng bốn bậc mà `responsive-grid.ts` của source dùng:
+   940 / 1180 / 1440 / 2200. Đo bằng CONTAINER, không phải viewport: bề rộng
+   thật của widget do lưới dashboard quyết định, không phải cửa sổ trình duyệt. */
+.wrap{container-type:inline-size; container-name:widget; max-width:2200px; margin:0 auto; padding:14px}
+
+/* ---------------------------------------------------------------- header */
+.hdr{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px}
+.hdr h1{margin:0; font-size:18px; font-weight:700; letter-spacing:-.01em}
+.wicon{
+  width:32px; height:32px; border-radius:8px; display:grid; place-items:center; flex:none;
+  background:color-mix(in srgb, var(--accent-blue) 14%, transparent);
+  color:var(--accent-blue);
+}
+.mart{
+  font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  padding:3px 9px; border-radius:999px;
+  background:var(--brand-wash); color:var(--brand); border:1px solid color-mix(in srgb, var(--brand) 26%, transparent);
+}
+.hsub{font-size:12px; color:var(--fg-mute)}
+.spacer{flex:1 1 auto}
+.themepick{display:inline-flex; gap:2px; padding:2px; border:1px solid var(--border); border-radius:9px; background:var(--s-card)}
+.themepick button{
+  display:inline-flex; align-items:center; gap:5px; font:600 12px/1 Inter, sans-serif;
+  padding:6px 10px; border:0; border-radius:7px; background:transparent; color:var(--fg-mute); cursor:pointer;
+}
+.themepick button svg{width:14px; height:14px}
+.themepick button[aria-pressed="true"]{background:var(--brand); color:var(--brand-fg)}
+.themepick button:not([aria-pressed="true"]):hover{background:var(--btn-hover); color:var(--fg)}
+
+/* ------------------------------------------------------------ filter bar */
+.filterbar{
+  display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end;
+  padding:10px 12px; margin-bottom:14px;
+  background:var(--s-card); border:1px solid var(--border); border-radius:12px;
+}
+.fld{display:flex; flex-direction:column; gap:3px; min-width:0}
+.fld label{font-size:10.5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:var(--fg-mute)}
+.fld select,.fld input{
+  font:500 12.5px/1 Inter, sans-serif; color:var(--fg);
+  background:var(--s-page); border:1px solid var(--border); border-radius:7px; padding:7px 9px; min-width:118px;
+}
+.fld select:focus-visible,.fld input:focus-visible{outline:2px solid var(--brand); outline-offset:1px}
+.btnpair{display:flex; gap:8px; margin-left:auto}
+.btn{font:600 12.5px/1 Inter, sans-serif; padding:8px 14px; border-radius:8px; cursor:pointer; border:1px solid var(--border); background:var(--s-page); color:var(--fg-dim)}
+.btn:hover{background:var(--s-hover)}
+.btn.primary{background:var(--brand); color:var(--brand-fg); border-color:transparent}
+.btn.primary:hover{filter:brightness(1.08)}
+
+/* ------------------------------------------------------------------ card */
+.card{
+  background:var(--s-card); border:1px solid var(--border); border-radius:12px;
+  box-shadow:var(--lift); padding:14px; min-width:0;
+}
+.card>h2{margin:0 0 2px; font-size:14px; font-weight:600}
+.sub{margin:0 0 12px; font-size:12px; color:var(--fg-mute)}
+.sub b{color:var(--fg-dim); font-weight:600}
+section{margin-bottom:14px}
+
+/* ============================== TẦNG 1 · CÂU MỞ ========================== */
+.hero{display:grid; gap:12px; grid-template-columns:1fr}
+@container widget (min-width:1180px){ .hero{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)} }
+.herost{display:flex; flex-direction:column; min-width:0}
+.herost .chips{flex:0 0 auto}
+
+.twin .tl{display:flex; align-items:baseline; gap:8px; margin-bottom:5px}
+.twin .tl .nm{font-size:12.5px; font-weight:600; color:var(--fg-dim)}
+.twin .tl .role{font-size:11px; color:var(--fg-mute)}
+.twin .tl .pc{margin-left:auto; font-weight:700; font-size:20px; letter-spacing:-.02em}
+.twin .rail{position:relative; height:22px; border-radius:6px; background:var(--track)}
+.twin .fill{position:absolute; inset:0 auto 0 0; border-radius:6px}
+.twin .row+.row{margin-top:14px}
+/* Vạch mục tiêu 85 — đặt trên rãnh, không phải trên phần tô, để nó vẫn đọc
+   được cả khi phần tô đã phủ qua. */
+/* Vạch thò ra ngoài rãnh 5px ở cả hai đầu: phần nằm trong rãnh bị phần tô
+   phủ lên và gần như mất hút, phần thò ra nằm trên nền thẻ nên luôn đọc được.
+   Chỉ làm được sau khi bỏ overflow:hidden của .rail. */
+.twin .tick{position:absolute; top:-5px; bottom:-5px; width:2px; background:var(--fg-dim); opacity:.7}
+.twin .scale{position:relative; height:15px; margin-top:7px; font-size:10.5px; color:var(--fg-mute)}
+.twin .scale span{position:absolute; transform:translateX(-50%); white-space:nowrap}
+.twin .scale span:first-child{transform:none}
+.twin .scale span:last-child{transform:translateX(-100%)}
+.twin .scale b{color:var(--fg-dim); font-weight:600}
+/* Vùng KHÔNG THỂ chạm tới của thanh tải trọng. Lấp kín 100% thể tích cả đội
+   xe thì lượng hàng đó chỉ nặng 69,8% tải trọng đăng ký — phần bên phải mốc
+   này không có cách xếp nào với tới. Không vẽ ra thì 64,68% đọc thành
+   "còn 35% để khai thác", sai hoàn toàn. */
+/* --key-hi chỉ 5% alpha ở sáng và 8% ở tối nên gạch chéo gần như vô hình.
+   Dùng chính màu của TẢI TRỌNG pha 42% — vừa đủ thấy ở cả hai theme, và màu
+   tự nói ra đây là trần của chiều nào. */
+.twin .unreach{position:absolute; top:0; right:0; bottom:0; border-left:2px dashed var(--series-neutral); border-radius:0 6px 6px 0;
+  background:repeating-linear-gradient(45deg,
+    color-mix(in srgb, var(--series-neutral) 42%, transparent) 0 4px,
+    transparent 4px 9px)}
+.twin .tklb{position:absolute; bottom:calc(100% + 6px); transform:translateX(-50%); white-space:nowrap;
+  font-size:10.5px; font-weight:600; color:var(--fg-dim)}
+/* Nhãn của thanh Thể tích neo bên TRÁI vạch, không căn giữa: vạch ở 85% mà con
+   số 92,62% căn phải mép — ở khổ 1180–1250px khung trái chỉ ~700px nên hai thứ
+   đè lên nhau. Neo trái thì nhãn kết thúc đúng ở vạch. */
+.twin .tklb.lft{transform:translateX(-100%); padding-right:5px}
+.twin .tklb.neu{color:var(--series-neutral)}
+.twin .gapzone{position:absolute; top:0; right:0; bottom:0; border-radius:0 6px 6px 0; cursor:pointer}
+.twin .gapzone:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+.twin .abs{margin-top:5px; font-size:11.5px; color:var(--fg-mute)}
+/* Vì sao thanh Tải trọng có trần: so hai mật độ trên CÙNG một thang mét khối.
+   Đoạn văn cũ nói "7,01 so với 4,89" — hai con số trần trụi không cho thấy cái
+   nào lớn hơn bao nhiêu. Hai thanh thì thấy ngay. */
+.dens{margin-top:20px}
+.dens .d-h{font-size:11px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:var(--fg-mute); margin-bottom:8px}
+.dens .d-row{display:grid; grid-template-columns:minmax(120px,auto) minmax(0,1fr) auto; gap:10px; align-items:center}
+.dens .d-row + .d-row{margin-top:6px}
+.dens .d-lb{font-size:12px; color:var(--fg-dim)}
+.dens .d-track{height:13px; border-radius:4px; background:var(--track)}
+.dens .d-track i{display:block; height:100%; border-radius:4px}
+.dens .d-v{font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums; min-width:56px; text-align:right}
+.dens .d-out{margin-top:9px; font-size:12px; color:var(--fg-dim); line-height:1.5}
+.dens .d-out b{color:var(--fg)}
+
+.chips{display:grid; gap:12px; grid-template-columns:1fr 1fr}
+@container widget (max-width:620px){ .chips{grid-template-columns:1fr} }
+.chip{
+  display:grid; grid-template-rows:auto 1fr auto; gap:6px; padding:12px;
+  border-radius:11px; border:1px solid var(--cell-border); background:var(--cell-bg);
+}
+.chip .lbl{font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--fg-mute)}
+.chip .v{font-weight:700; font-size:clamp(28px,4.4cqi,40px); line-height:1.05; letter-spacing:-.03em}
+.chip .u{font-size:14px; font-weight:600; color:var(--fg-mute); margin-left:3px}
+.chip .ft{font-size:11.5px; color:var(--fg-mute); border-top:1px solid var(--hairline); padding-top:6px}
+.bullet{position:relative; height:7px; border-radius:4px; background:var(--track); margin:2px 0 4px}
+.bullet i{position:absolute; inset:0 auto 0 0; border-radius:4px; display:block}
+.bullet .mk{position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--fg-dim); opacity:.6}
+/* Dải chỗ trống: MỘT tổng, hai phần RỜI NHAU cộng đúng tổng (L8).
+   Phần bị chặn tô xám vì trên trang này xám = tải trọng — chính tải trọng
+   là thứ đang chặn nó. Màu tự nói ra nguyên nhân. */
+.slack{margin-top:12px; padding:11px 12px; border-radius:10px; background:var(--cell-bg); border:1px solid var(--cell-border);
+  transition:background .14s, box-shadow .14s}
+/* Liên kết hai chiều: trỏ vào phần TRỐNG của thanh Thể tích thì dải chỗ trống
+   nổi lên, và ngược lại. Đây là chỗ duy nhất trên trang nói ra rằng hai thứ đó
+   là CÙNG MỘT lượng thể tích, chỉ nhìn từ hai phía. Nhấn HAI mức, không ba. */
+.hero.link-slack .slack{background:var(--s-hover); box-shadow:0 0 0 2px var(--st-risk-1)}
+.hero.link-slack .slack .sbar{height:23px}
+.hero.link-slack .twin .gapzone{background:color-mix(in srgb, var(--st-risk-1) 34%, transparent);
+  box-shadow:inset 0 0 0 1.5px var(--st-risk-1)}
+.slack .sh{font-size:11.5px; color:var(--fg-mute); margin-bottom:8px}
+.slack .sh b{font-size:14px; color:var(--fg); font-weight:700}
+.slack .sbar{display:flex; gap:2px; height:17px; transition:height .14s}
+.slack .sbar i{display:block; border-radius:4px; min-width:0}
+.slack .sk{display:grid; gap:5px; margin-top:9px; font-size:11.5px; color:var(--fg-mute)}
+.slack .sk span{display:flex; align-items:baseline; gap:7px}
+.slack .sk i{width:10px; height:10px; border-radius:3px; flex:none; align-self:center}
+.slack .sk b{font-weight:700; font-variant-numeric:tabular-nums}
+
+/* ============================ TẦNG 2 · PHÂN BỐ =========================== */
+.bandchips{display:grid; gap:8px; grid-template-columns:repeat(2,minmax(0,1fr)); margin-bottom:12px}
+@container widget (min-width:760px){ .bandchips{grid-template-columns:repeat(4,minmax(0,1fr))} }
+.bc{
+  display:grid; grid-template-rows:subgrid; grid-row:span 4;
+  padding:9px 10px; border-radius:9px; background:var(--cell-bg); border:1px solid var(--cell-border);
+  border-top:3px solid currentColor; cursor:pointer; transition:background .12s;
+}
+.bandchips{grid-auto-rows:auto}
+.bc:hover{background:var(--s-hover)}
+/* L9 · nhấn HAI mức, không ba: dải được chọn giữ nguyên độ sáng và thêm vòng
+   trong theo màu của chính nó; ba dải kia chìm. Không có luật này thì trạng
+   thái chọn chỉ nhìn thấy nhờ vòng tiêu điểm — và vòng đó biến mất ngay khi
+   người dùng bấm chỗ khác. */
+.bc[aria-pressed="true"]{background:var(--s-hover); box-shadow:inset 0 0 0 1.5px currentColor}
+.bandchips:has(.bc[aria-pressed="true"]) .bc[aria-pressed="false"]{opacity:.5}
+.bc .bl{font-size:11.5px; font-weight:600; color:var(--fg-dim)}
+.bc .bn{font-weight:700; font-size:19px; letter-spacing:-.02em; color:inherit}
+.bc .bn small{font-size:11.5px; font-weight:600; color:var(--fg-mute); margin-left:4px}
+.bc .bf{font-size:11px; color:var(--fg-mute)}
+.bc .bf b{color:var(--series-amber); font-weight:700}
+.bc .bf .bch{color:var(--series-neutral)}
+.bc .bp{font-size:11px; color:var(--fg-mute); border-top:1px solid var(--hairline); margin-top:5px; padding-top:5px}
+.bc .bp b{color:var(--fg-dim); font-weight:700}
+#hist{width:100%; height:460px}
+@container widget (min-width:940px){ #hist{height:420px} }
+
+/* ================= TẦNG 3 · MA TRẬN + TẦNG 4 · CHIỀU ===================== */
+.mid{display:grid; gap:14px; grid-template-columns:1fr}
+@container widget (min-width:1180px){ .mid{grid-template-columns:minmax(0,5fr) minmax(0,7fr)} }
+
+/* Ô vuông aspect-ratio 1/1 ăn theo bề rộng: dưới 1180px khung này chiếm trọn
+   hàng nên ma trận cao hơn 1.000px và nuốt cả màn hình. Chặn trần bề rộng —
+   ở khổ rộng khung vốn đã hẹp hơn 620px nên luật này không đụng gì. */
+.mx{display:grid; grid-template-columns:auto auto minmax(0,1fr); grid-template-rows:auto auto auto; gap:6px; max-width:620px; margin:0 auto}
+.mx .axname.y{grid-column:1; grid-row:1}
+.mx .yax{grid-column:2; grid-row:1}
+.mx .plot{grid-column:3; grid-row:1}
+.mx .xax{grid-column:3; grid-row:2}
+.mx .axname.x{grid-column:3; grid-row:3}
+.mx .yax{display:grid; grid-template-rows:repeat(10,1fr); align-items:center; font-size:10px; color:var(--fg-mute); text-align:right; padding-right:2px}
+.mx .plot{position:relative; display:grid; grid-template-columns:repeat(10,1fr); grid-template-rows:repeat(10,1fr); gap:2px; aspect-ratio:1/1}
+.mx .xax{display:grid; grid-template-columns:repeat(10,1fr); font-size:10px; color:var(--fg-mute); text-align:center}
+.mx .cell{border-radius:3px; background:var(--cell-bg); position:relative; cursor:default}
+.mx .cell[data-n]{background:color-mix(in srgb, var(--series-blue) calc(var(--i) * 1%), var(--cell-bg))}
+.mx .cell:hover{outline:2px solid var(--fg-dim); outline-offset:0; z-index:3}
+/* Đường chéo tấn = khối. Vẽ bằng một phần tử phủ, không tô vào từng ô — tô vào
+   ô sẽ đổi màu của chính dữ liệu. */
+.mx .diag{position:absolute; inset:0; pointer-events:none; z-index:2}
+.mx .diag line{stroke:var(--fg-dim); stroke-width:1.5; stroke-dasharray:4 3; opacity:.45}
+.mx .zone{position:absolute; font-size:11px; font-weight:600; pointer-events:none; z-index:2; line-height:1.35}
+.mx .zone.lo{right:6px; bottom:6px; text-align:right; color:var(--series-blue)}
+.mx .zone.hi{left:6px; top:6px; color:var(--series-neutral)}
+.mx .zone span{display:block; font-weight:400; font-size:10.5px; color:var(--fg-mute)}
+.axname{font-size:11px; color:var(--fg-mute); text-align:center; margin-top:3px}
+.axname.y{writing-mode:vertical-rl; transform:rotate(180deg); text-align:center; margin:0 3px 0 0; align-self:center}
+
+.dimtabs{display:flex; gap:2px; padding:2px; border-radius:9px; background:var(--cell-bg); border:1px solid var(--cell-border); margin-bottom:10px; flex-wrap:wrap}
+.dimtabs button{
+  font:600 12px/1 Inter, sans-serif; padding:7px 11px; border:0; border-radius:7px;
+  background:transparent; color:var(--fg-mute); cursor:pointer;
+}
+.dimtabs button[aria-selected="true"]{background:var(--brand); color:var(--brand-fg)}
+.dimtabs button:not([aria-selected="true"]):hover{background:var(--btn-hover); color:var(--fg)}
+
+.dimrows{display:grid; gap:2px}
+.dimhd, .dr{
+  display:grid; gap:4px 10px; align-items:center;
+  grid-template-columns:minmax(96px,1.35fr) minmax(0,2.3fr) 58px 76px 84px;
+}
+.dimhd{padding:0 8px 6px; border-bottom:1px solid var(--hairline); margin-bottom:4px;
+  font-size:10.5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:var(--fg-mute)}
+.dimhd .dh-v, .dimhd .dh-c, .dimhd .dh-l{text-align:right}
+/* Dưới 940px thì bỏ cột CBM thực chở — cùng cách `SECONDARY_COLUMN` của source. */
+@container widget (max-width:940px){
+  .dimhd, .dr{grid-template-columns:minmax(90px,1.35fr) minmax(0,2fr) 54px 78px}
+  .dimhd .dh-c, .dr .vol{display:none}
+}
+.dr{
+  padding:7px 8px; border-radius:8px;
+  transition:background .12s, opacity .12s;
+}
+.dimrows:hover .dr{opacity:.35}
+.dimrows .dr:hover{opacity:1; background:var(--row-hover)}
+.dr .dn{font-size:12.5px; font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.dr .dn small{display:block; font-weight:400; font-size:10.5px; color:var(--fg-mute)}
+.dr .brow{position:relative; height:11px; border-radius:5px; background:var(--track)}
+.dr .brow i{position:absolute; inset:0 auto 0 0; border-radius:5px; display:block}
+.dr .brow .mk{position:absolute; top:-2px; bottom:-2px; width:1.5px; background:var(--fg-dim); opacity:.4}
+/* Chở VƯỢT sức chở đăng ký. Thanh đã chạm 100% nên không còn chỗ thể hiện phần
+   vượt — nếu không đánh dấu thì 112,3% và 100,0% trông y hệt nhau. */
+.dr .brow .ovf{position:absolute; right:-3px; top:-3px; bottom:-3px; width:5px; border-radius:2px; background:var(--series-violet)}
+.dr .vfrv{text-align:right; font-size:12.5px; font-weight:700}
+.dr .vol{text-align:right; font-size:12.5px; color:var(--fg-dim)}
+.dr .lost{text-align:right}
+.dr .lost .ln{font-weight:700; font-size:13.5px; color:var(--series-amber)}
+.dr .lost .lb{display:flex; gap:1px; height:5px; margin-top:4px; margin-left:auto}
+.dr .lost .lb i{display:block; border-radius:2px; min-width:0}
+.dimfoot{display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; margin-top:10px}
+.dimsort{display:flex; align-items:center; gap:4px; margin-left:auto; font-size:11.5px; color:var(--fg-mute)}
+.dimsort button{font:600 11.5px/1 Inter, sans-serif; padding:5px 9px; border:1px solid var(--border);
+  border-radius:7px; background:var(--s-page); color:var(--fg-mute); cursor:pointer}
+.dimsort button[aria-pressed="true"]{background:var(--brand); color:var(--brand-fg); border-color:transparent}
+.dimsort button:not([aria-pressed="true"]):hover{background:var(--s-hover); color:var(--fg)}
+.dimlegend{display:flex; flex-wrap:wrap; gap:12px; font-size:11.5px; color:var(--fg-mute)}
+.dimlegend i{display:inline-block; width:11px; height:8px; border-radius:2px; margin-right:5px; vertical-align:baseline}
+
+/* ============================ TẦNG 5 · XU HƯỚNG ========================== */
+#trend{width:100%; height:400px}
+@container widget (min-width:940px){ #trend{height:340px} }
+
+/* ============================== TẦNG 6 · BẢNG ============================ */
+.tblbox{overflow-x:auto}
+table{border-collapse:collapse; width:100%; min-width:960px; font-size:12.5px}
+thead th{
+  position:sticky; top:0; z-index:2; background:var(--th-bg);
+  text-align:right; font-weight:600; font-size:11px; letter-spacing:.02em;
+  color:var(--fg-mute); padding:8px 9px; border-bottom:1px solid var(--border); white-space:nowrap;
+}
+thead th:first-child{text-align:left}
+tbody td{padding:7px 9px; text-align:right; border-bottom:1px solid var(--hairline); white-space:nowrap}
+tbody td:first-child{text-align:left}
+tbody tr:hover{background:var(--row-hover)}
+tr.kho{background:var(--row-total); font-weight:600}
+tr.kid{background:var(--row-kid)}
+tr.kid td:first-child{padding-left:26px; color:var(--fg-dim); font-weight:400}
+tr.tot{background:var(--row-total); font-weight:700; border-top:2px solid var(--border)}
+.tw{display:inline-flex; align-items:center; gap:6px}
+.tw button{
+  width:17px; height:17px; flex:none; border:1px solid var(--border); border-radius:4px;
+  background:var(--s-card); color:var(--fg-dim); cursor:pointer; font:700 11px/1 Inter, sans-serif;
+  display:grid; place-items:center; padding:0;
+}
+.tw button:hover{background:var(--s-hover)}
+td.cap{color:var(--series-violet); font-weight:600}
+td.lost{color:var(--series-amber); font-weight:600}
+td.blocked{color:var(--series-neutral)}
+td.per{color:var(--fg-dim)}
+.b1{color:var(--rag-bad)} .b2{color:var(--rag-warn)} .b3{color:var(--fg-dim)} .b4{color:var(--rag-good)}
+
+/* ------------------------------------------------------------- chú thích */
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important; animation:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ==================================================== header + filter -->
+  <div class="hdr">
+    <div class="wicon" aria-hidden="true">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 8h11v9H3z"/><path d="M14 11h4l3 3v3h-7z"/><circle cx="7" cy="18.5" r="1.7"/><circle cx="17.5" cy="18.5" r="1.7"/>
+      </svg>
+    </div>
+    <div>
+      <h1>VFR — Tỷ lệ sử dụng xe</h1>
+      <div class="hsub">4.161 chuyến · 01/08 – 31/08/2026 · lọc theo <b>Ngày gửi thầu</b></div>
+    </div>
+    <span class="mart">Gửi thầu</span>
+    <div class="spacer"></div>
+    <div class="themepick" role="group" aria-label="Chọn chủ đề">
+      <button type="button" id="pickLight" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+        Sáng
+      </button>
+      <button type="button" id="pickDark" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg>
+        Tối
+      </button>
+    </div>
+  </div>
+
+  <div class="filterbar">
+    <div class="fld"><label for="f-dt">Loại ngày</label>
+      <select id="f-dt"><option>Ngày gửi thầu</option><option>Delivery Cycle</option><option>ETA</option><option>ATA</option></select></div>
+    <div class="fld"><label for="f-from">Từ ngày</label><input id="f-from" type="date" value="2026-08-01"></div>
+    <div class="fld"><label for="f-to">Đến ngày</label><input id="f-to" type="date" value="2026-08-31"></div>
+    <div class="fld"><label for="f-wh">Kho</label>
+      <select id="f-wh"><option>Tất cả (4)</option><option>BKD1</option><option>NKD</option><option>VN821</option><option>VN831</option></select></div>
+    <div class="fld"><label for="f-area">Khu vực</label><select id="f-area"><option>Tất cả (11)</option></select></div>
+    <div class="fld"><label for="f-vendor">Nhà vận tải</label><select id="f-vendor"><option>Tất cả (6)</option></select></div>
+    <div class="fld"><label for="f-veh">Loại xe gửi thầu</label><select id="f-veh"><option>Tất cả (7)</option></select></div>
+    <div class="btnpair">
+      <button class="btn" type="button">Đặt lại</button>
+      <button class="btn primary" type="button">Áp dụng</button>
+    </div>
+  </div>
+
+  <!-- ========================================== TẦNG 1 · CÂU MỞ ========== -->
+  <section class="hero">
+    <div class="card twin">
+      <h2>Đội xe đầy tới đâu</h2>
+      <p class="sub">Hai ràng buộc trên cùng một thang. %VFR chỉ lấy con lớn hơn — nên nó không bao giờ nói ra khoảng cách này.</p>
+
+      <div class="row">
+        <div class="tl">
+          <span class="nm">Thể tích</span>
+          <span class="role">— ràng buộc đang chặn</span>
+          <span class="pc tnum" style="color:var(--series-blue)">92,62%</span>
+        </div>
+        <div class="rail">
+          <span class="fill" style="width:92.62%;background:var(--series-blue)"></span>
+          <!-- Vùng trống này là điểm neo của liên kết hover sang dải chỗ trống. -->
+          <span class="gapzone" id="gapzone" style="left:92.62%" tabindex="0"
+                aria-label="Phần thể tích còn trống — trỏ vào để nối sang dải chỗ trống thô"></span>
+          <span class="tick" style="left:85%"></span>
+          <span class="tklb lft" style="left:85%">mục tiêu 85%</span>
+        </div>
+        <div class="abs tnum">64.226 / 69.344 CBM đăng ký</div>
+      </div>
+
+      <div class="row">
+        <div class="tl">
+          <span class="nm">Tải trọng</span>
+          <span class="role">— gần kịch trần vật lý 69,8%</span>
+          <span class="pc tnum" style="color:var(--series-neutral)">64,68%</span>
+        </div>
+        <div class="rail">
+          <span class="fill" style="width:64.68%;background:var(--series-neutral)"></span>
+          <!-- KHÔNG có vạch mục tiêu 85% ở đây. Mục tiêu 85 là mục tiêu của %VFR,
+               mà %VFR chấm theo chiều BỊ CHẶN — với hàng này thì gần như luôn là
+               thể tích. Áp 85% lên tải trọng là đặt một mục tiêu mà vật lý cấm
+               đạt tới: trần của chiều này chỉ 69,8%. -->
+          <span class="unreach" style="left:69.8%"></span>
+          <span class="tklb neu" style="left:69.8%">trần vật lý 69,8%</span>
+        </div>
+        <div class="abs tnum">9.166 / 14.172 tấn đăng ký · vùng gạch chéo = 4.276 tấn không xếp tới được</div>
+        <div class="scale" aria-hidden="true">
+          <span style="left:0">0</span>
+          <span style="left:50%">50</span>
+          <span style="left:100%">100%</span>
+        </div>
+      </div>
+
+      <div class="dens">
+        <div class="d-h">Vì sao thanh Tải trọng có trần</div>
+        <div class="d-row">
+          <span class="d-lb">Mỗi tấn <b>hàng</b> chiếm</span>
+          <span class="d-track"><i style="width:87.6%;background:var(--series-blue)"></i></span>
+          <span class="d-v tnum" style="color:var(--series-blue)">7,01 m³</span>
+        </div>
+        <div class="d-row">
+          <span class="d-lb">Mỗi tấn <b>sức chở xe</b> có</span>
+          <span class="d-track"><i style="width:61.1%;background:var(--series-neutral)"></i></span>
+          <span class="d-v tnum" style="color:var(--series-neutral)">4,89 m³</span>
+        </div>
+        <div class="d-out">
+          Hàng cồng kềnh hơn xe <b>1,43 lần</b> — nên xe luôn hết <b>chỗ</b> trước khi hết <b>tải</b>.
+          Xếp kín 100% thể tích thì hàng cũng chỉ nặng <b>69,8%</b> tải trọng đăng ký: đó là vùng gạch chéo,
+          và nó <b>không phải cơ hội</b>.
+        </div>
+      </div>
+
+    </div>
+
+    <div class="herost">
+      <div class="chips">
+        <div class="chip">
+          <span class="lbl">%VFR gửi thầu</span>
+          <div>
+            <div class="v tnum" style="color:var(--rag-good)">95,79<span class="u">%</span></div>
+            <div class="bullet"><i style="width:95.79%;background:var(--rag-good)"></i><span class="mk" style="left:85%"></span></div>
+          </div>
+          <span class="ft">mục tiêu <b class="tnum">85%</b> · chấm mỗi chuyến theo chiều bị chặn</span>
+        </div>
+        <div class="chip">
+          <span class="lbl">Chở thêm được</span>
+          <div>
+            <div class="v tnum" style="color:var(--series-amber)">4.171<span class="u">CBM</span></div>
+          </div>
+          <!-- KHÔNG quy ra "≈ N chuyến": cùng 4.171 CBM ra 250 chuyến nếu chia cho
+               xe trung bình, 105 nếu chia cho 11T, 348 nếu chia cho 2T. Con số đó
+               là hệ quả của việc chọn loại xe nào, không phải một sự thật. -->
+          <span class="ft"><b class="tnum">6,0%</b> sức chở đã đăng ký · đã trừ phần trần tải trọng chặn</span>
+        </div>
+      </div>
+      <div class="slack">
+        <div class="sh">Chỗ trống thô <b class="tnum">6.122 CBM</b> trên 2.932 chuyến — tách làm hai phần rời nhau</div>
+        <!-- flex lấy thẳng giá trị CBM làm tỷ lệ: hai đoạn cộng đúng 6.121,8 nên
+             không có số làm tròn nào phải bịa thêm. -->
+        <div class="sbar" role="img" aria-label="4.171 CBM cơ hội và 1.950 CBM bị trần tải trọng chặn, tổng 6.122">
+          <i style="flex:4171.4;background:var(--st-risk-1)"></i>
+          <i style="flex:1950.4;background:var(--series-neutral)"></i>
+        </div>
+        <div class="sk">
+          <span><i style="background:var(--st-risk-1)"></i>
+            <b style="color:var(--series-amber)">4.171 CBM</b> · 68,1% — <b>cơ hội</b>, chở thêm được</span>
+          <span><i style="background:var(--series-neutral)"></i>
+            <b>1.950 CBM</b> · 31,9% — chỗ có thật nhưng <b>xe đã hết tải trọng</b>, 852 chuyến</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ======================================== TẦNG 2 · PHÂN BỐ =========== -->
+  <section class="card">
+    <h2>Phân bố 4.161 chuyến theo mức sử dụng</h2>
+
+    <p class="sub">Hai hàng dùng chung trục ngang. Bấm một dải để soi riêng dải đó.</p>
+
+    <div class="bandchips" id="bandchips"></div>
+    <div id="hist" role="img" aria-label="Phân bố số chuyến và thể tích bỏ trống theo mức sử dụng, bước 5%"></div>
+  </section>
+
+  <!-- ====================== TẦNG 3 · MA TRẬN + TẦNG 4 · CHIỀU =========== -->
+  <section class="mid">
+    <div class="card">
+      <h2>Ràng buộc nào đang chặn</h2>
+      <p class="sub">Mỗi ô là số chuyến. Dưới đường chéo = đầy khối trước; trên = đầy tấn trước.</p>
+      <div class="mx">
+        <div class="axname y">VFR theo tấn</div>
+        <div class="yax" id="mxy"></div>
+        <div class="plot" id="mxplot">
+          <svg class="diag" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="100" x2="100" y2="0"/></svg>
+          <div class="zone lo">Chật chỗ, còn dư tải<span>3.201 chuyến · 76,9%</span></div>
+          <div class="zone hi">Nặng, còn dư chỗ<span>960 chuyến · 23,1%</span></div>
+        </div>
+        <div class="xax" id="mxx"></div>
+        <div class="axname x">VFR theo khối</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>%VFR và cơ hội theo chiều</h2>
+      <p class="sub"><b>%VFR weighted</b> tính đúng công thức ba tầng của <code>by_area</code> / <code>by_vehicle</code> /
+        <code>by_loading_type</code>.</p>
+      <div class="dimtabs" role="tablist" id="dimtabs">
+        <button type="button" role="tab" data-k="kv"  aria-selected="true">Khu vực</button>
+        <button type="button" role="tab" data-k="xe"  aria-selected="false">Loại xe</button>
+        <button type="button" role="tab" data-k="nvt" aria-selected="false">Nhà vận tải</button>
+        <button type="button" role="tab" data-k="bx"  aria-selected="false">Loại bốc xếp</button>
+      </div>
+      <div class="dimhd">
+        <span class="dh-n">Chiều</span>
+        <span class="dh-b">%VFR weighted · thang 0–100</span>
+        <span class="dh-v">%VFR</span>
+        <span class="dh-c">CBM thực chở</span>
+        <span class="dh-l">Cơ hội</span>
+      </div>
+      <div class="dimrows" id="dimrows"></div>
+      <div class="dimfoot">
+        <div class="dimlegend">
+          <span><i style="background:var(--rag-good)"></i>đạt mục tiêu 85%</span>
+          <span><i style="background:var(--rag-warn)"></i>75–85%</span>
+          <span><i style="background:var(--rag-bad)"></i>dưới 75%</span>
+          <span><i style="background:var(--st-risk-1)"></i>cơ hội</span>
+          <span><i style="background:var(--series-neutral)"></i>bị trần tải trọng chặn</span>
+        </div>
+        <div class="dimsort" id="dimsort" role="group" aria-label="Khoá sắp xếp">
+          <span>Xếp theo</span>
+          <button type="button" data-s="co"  aria-pressed="true">Cơ hội</button>
+          <button type="button" data-s="vfr" aria-pressed="false">%VFR thấp nhất</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================= TẦNG 5 · XU HƯỚNG ========== -->
+  <section class="card">
+    <h2>Xu hướng theo ngày</h2>
+    <div id="trend" role="img" aria-label="Sản lượng CBM theo ngày và hai tỷ lệ đầy thể tích, đầy tải trọng"></div>
+  </section>
+
+  <!-- ========================================== TẦNG 6 · BẢNG =========== -->
+  <section class="card">
+    <h2>Dải sử dụng theo kho và nhà vận tải</h2>
+    <div class="tblbox">
+      <table>
+        <thead>
+          <tr>
+            <th>Kho / Nhà vận tải</th>
+            <th>Chuyến</th>
+            <th>&lt;50%</th>
+            <th>50–70%</th>
+            <th>70–95%</th>
+            <th>≥95%</th>
+            <th>Đụng trần</th>
+            <th>Đầy khối</th>
+            <th>Đầy tấn</th>
+            <th>Cơ hội (CBM)</th>
+            <th>Cơ hội / chuyến</th>
+            <th>Bị chặn</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/6.1.0/echarts.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ====================================================== chọn chủ đề === */
+  var root = document.documentElement;
+  var bLight = document.getElementById('pickLight');
+  var bDark  = document.getElementById('pickDark');
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+  function stored(key, val) {
+    try { return val === undefined ? localStorage.getItem(key) : localStorage.setItem(key, val); }
+    catch (e) { return null; }
+  }
+  function resolved() {
+    var t = root.getAttribute('data-theme');
+    if (t === 'light' || t === 'dark') return t;
+    return mq.matches ? 'dark' : 'light';
+  }
+  function paintTheme() {
+    var r = resolved();
+    bLight.setAttribute('aria-pressed', r === 'light' ? 'true' : 'false');
+    bDark.setAttribute('aria-pressed',  r === 'dark'  ? 'true' : 'false');
+  }
+
+  /* Đọc TƯƠI mỗi lần gọi. ECharts nhận màu là GIÁ TRỊ lúc setOption — nó không
+     theo dõi biến CSS, nên đổi theme mà không dựng lại chart thì chart giữ
+     nguyên màu của theme cũ. */
+  function T(name) {
+    return getComputedStyle(root).getPropertyValue(name).trim();
+  }
+
+  /* ECharts KHÔNG kế thừa font của trang: mặc định nó vẽ bằng 'sans-serif',
+     và font hệ thống rơi vào đó dựng dấu tiếng Việt khác hẳn Inter — chữ trong
+     biểu đồ trông "lỗi font" so với phần còn lại. Phải truyền tay ở textStyle
+     gốc thì mọi nhãn, tiêu đề, legend, tooltip mới dùng chung một font. */
+  var FONT = 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  /* =========================================================== dữ liệu ===
+   * Tất cả số dưới đây đọc thẳng từ slg_datamart.rc_vfr_gui_thau,
+   * kỳ 01–31/08/2026, lọc theo tender_date. Đã kiểm cộng dồn:
+   *   dải     84 + 51 + 1242 + 2784        = 4.161 chuyến
+   *   bỏ trống 1.156 + 291 + 2.632 + 1.039 = 5.118 CBM
+   *   kho     1.714 + 1.482 + 503 + 462    = 4.161 chuyến
+   *   kho     1.845 + 1.526 + 1.071 + 676  = 5.118 CBM
+   * ------------------------------------------------------------------- */
+  /* Cơ hội TRUNG BÌNH MỖI CHUYẾN — tính tại chỗ từ hai cột đã có, không nhập
+     thêm số. Cột tổng cộng dồn được, cột này thì KHÔNG: nó là thương của hai
+     tổng, nên dòng cha phải chia lại chứ không cộng các dòng con. */
+  var PER = function (co, n) {
+    return n ? (co / n).toFixed(2).replace('.', ',') : '—';
+  };
+
+  var VN = function (n, d) {
+    return Number(n).toLocaleString('vi-VN', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
+  };
+
+  /* `co` = CƠ HỘI: chở thêm được bao nhiêu, đo ở CẤP TỪNG CHUYẾN, tôn trọng CẢ
+     HAI trần — least(chỗ còn trống, tải còn lại / mật độ của chính chuyến đó).
+     `ch` = chỗ trống CÓ THẬT nhưng xe đã hết tải trọng, không dùng được.
+     co + ch = chỗ trống thô. Mọi con "bỏ trống" trên trang này là `co`, KHÔNG
+     phải hiệu tổng Sigma dang_ky - Sigma nhan: hiệu tổng gộp cả phần chở vượt
+     lẫn phần bị trần tấn chặn nên nó nói QUÁ tổn thất.
+     Làm tròn kiểu "largest remainder" để tổng khớp tuyệt đối ở mọi cấp. */
+  var BANDS = [
+    /* `per` = cơ hội TRUNG BÌNH MỖI CHUYẾN. Nó giảm đều 13,3 -> 0,2 đúng theo
+       trực giác, trong khi cột TỔNG lại phình ra ở giữa. Hai con số trả lời hai
+       câu khác nhau: mỗi chuyến tệ đến đâu, và cả nhóm mất bao nhiêu. */
+    { k: 'b1', lb: 'Dưới 50%',  n: 84,   co: 1117, ch:   39, per: 13.3, tok: '--rag-bad'   },
+    { k: 'b2', lb: '50 – 70%',  n: 51,   co:  273, ch:   18, per:  5.4, tok: '--st-risk-1' },
+    { k: 'b3', lb: '70 – 95%',  n: 1242, co: 2287, ch:  345, per:  1.8, tok: '--st-ok-1'   },
+    { k: 'b4', lb: 'Từ 95%',    n: 2784, co:  494, ch: 1548, per:  0.2, tok: '--st-ok-3'   }
+  ];
+  var TOTAL_TRIPS = 4161, TOTAL_CO = 4171;
+
+  /* bước 5% · [mức, số chuyến, cơ hội CBM, bị trần tấn chặn CBM, chở VƯỢT CBM]
+     Chở vượt gom trọn vào cột 100 — đo trên server: 1.202 chuyến, 1.003 CBM, và
+     KHÔNG có dòng nào ở 20 cột còn lại. Điều đó đúng theo định nghĩa: chở quá
+     sức chở thì vfr_max bị least(...,100) kéo về đúng 100. */
+  var HIST = [
+    [0,8,133,1,0],[5,6,86,3,0],[10,3,69,1,0],[15,8,98,12,0],[20,7,69,9,0],[25,3,31,0,0],
+    [30,10,79,2,0],[35,3,26,0,0],[40,13,169,8,0],[45,23,358,1,0],[50,6,62,2,0],[55,8,51,3,0],
+    [60,10,42,4,0],[65,27,117,8,0],[70,31,113,12,0],[75,64,196,15,0],[80,141,375,28,0],
+    [85,345,734,85,0],[90,661,871,205,0],[95,1296,494,937,0],[100,1488,0,611,1003]
+  ];
+
+  /* ma trận VFR theo tấn × VFR theo khối, bước 10 · [tấn, khối, chuyến] */
+  var MX = [
+    [0,0,14],[0,10,2],[0,20,1],[0,40,1],
+    [10,0,1],[10,10,8],[10,20,3],[10,30,2],[10,40,7],[10,70,1],[10,90,8],[10,100,3],
+    [20,10,3],[20,20,3],[20,30,2],[20,40,14],[20,50,4],[20,60,5],[20,70,1],[20,80,3],[20,90,18],[20,100,5],
+    [30,20,1],[30,30,8],[30,40,8],[30,50,4],[30,60,11],[30,70,11],[30,80,75],[30,90,101],[30,100,33],
+    [40,30,4],[40,40,2],[40,50,3],[40,60,9],[40,70,19],[40,80,73],[40,90,288],[40,100,153],
+    [50,40,2],[50,50,1],[50,60,4],[50,70,17],[50,80,85],[50,90,292],[50,100,212],
+    [60,40,3],[60,50,2],[60,60,3],[60,70,23],[60,80,84],[60,90,304],[60,100,218],
+    [70,40,1],[70,50,5],[70,60,2],[70,70,15],[70,80,71],[70,90,232],[70,100,180],
+    [80,50,5],[80,60,14],[80,70,27],[80,80,49],[80,90,168],[80,100,169],
+    [90,50,6],[90,60,143],[90,70,128],[90,80,124],[90,90,145],[90,100,132],
+    [100,50,1],[100,60,53],[100,70,68],[100,80,69],[100,90,89],[100,100,103]
+  ];
+
+  /* [tên, chuyến, %VFR weighted, CBM thực chở, cơ hội CBM, bị chặn CBM]
+     %VFR weighted tính ĐÚNG công thức ba tầng của by_area_tender.sql /
+     by_vehicle_tender.sql / by_loading_type_tender.sql: fill × mix × weight,
+     cap ở bước cuối. KHÔNG phải Σnhận/Σđăng ký — hai thứ khác nhau, và bản
+     trước của panel này đã dùng nhầm cái sau.
+     Cộng có trọng số theo CBM thì 6 nhà vận tải ra 95,7 ≈ con 95,79 ở đầu trang.
+
+     Chú ý khi đọc: %VFR weighted gần như BẰNG NHAU ở mọi chiều (94,5–98,4) nên
+     nó không chỉ ra được nơi cần làm; cột Cơ hội chênh nhau 12–942 mới chỉ ra. */
+  var DIMS = {
+    kv: [
+      ['South East',               536, 94.75,  8547,  942,  157],
+      ['Ha Noi',                   985, 94.99, 12625,  781,  544],
+      ['Ho Chi Minh',              979, 97.34, 10388,  617, 1007],
+      ['North East - North West',  510, 96.33,  9471,  476,  110],
+      ['North Central Coast',      422, 95.57,  8210,  461,   39],
+      ['Mekong 2',                 249, 96.05,  4081,  242,   36],
+      ['Mekong 1',                 243, 95.91,  4027,  229,   46],
+      ['Central highland',         120, 97.62,  3836,  181,   10],
+      ['South Central Coast',       75, 94.51,  2292,  157,    0],
+      ['(chưa phân vùng)',          39, 91.47,   672,   74,    1],
+      ['South East - Lam Dong',      3, 86.83,    77,   12,    0]
+    ],
+    xe: [
+      ['2T',    1411, 97.27, 15236, 966, 1166],
+      ['5T',     577, 94.20, 12691, 881,  113],
+      ['3.5T',   582, 95.29,  9936, 622,  228],
+      ['11T',    167, 94.48,  6164, 568,    0],
+      ['8T',     314, 96.20,  9446, 547,    6],
+      ['2.5T',   477, 95.41,  6099, 399,  146],
+      ['1.4T',   633, 98.42,  4653, 189,  291]
+    ],
+    nvt: [
+      ['ANH SON',     1716, 96.10, 25198, 1934, 1174],
+      ['HDA',         1707, 95.23, 25658, 1524,  674],
+      ['THANH AN',     249, 95.59,  4105,  247,   46],
+      ['NGUYEN PHAT',  247, 96.05,  4037,  240,   36],
+      ['TLL',          237, 96.75,  5039,  225,   20],
+      ['HVP',            5, 100.00,  190,    1,    0]
+    ],
+    bx: [
+      ['Loose',       4142, 96.08, 63851, 3747, 1950],
+      ['Full Pallet',   19, 46.90,   375,  424,    0]
+    ]
+  };
+
+  /* [ngày, chuyến, CBM nhận, đầy khối %, đầy tấn %] */
+  var TREND = [
+    ['01/08',91,1552,93.4,62.1],['02/08',81,1379,93.7,63.3],['03/08',98,1735,95.7,61.9],
+    ['04/08',173,2931,96.6,60.0],['05/08',149,2108,92.0,64.3],['06/08',147,2213,91.1,58.5],
+    ['07/08',115,1632,87.1,60.0],['08/08',85,1396,98.3,66.6],['09/08',72,1164,95.2,59.3],
+    ['10/08',134,2000,94.6,70.6],['11/08',175,2738,93.0,61.5],['12/08',135,2019,94.9,64.0],
+    ['13/08',182,2717,92.7,66.9],['14/08',139,1937,92.2,72.0],['15/08',51,1100,96.1,55.9],
+    ['16/08',150,2141,91.1,64.9],['17/08',143,2109,94.9,71.5],['18/08',204,3454,94.6,62.4],
+    ['19/08',200,3092,93.6,69.2],['20/08',154,2453,94.7,63.6],['21/08',150,2226,91.4,71.9],
+    ['22/08',87,1310,93.9,69.3],['23/08',82,1357,91.7,60.5],['24/08',184,2798,91.6,67.7],
+    ['25/08',193,3241,93.2,63.2],['26/08',175,2475,90.0,66.4],['27/08',209,3106,87.4,61.0],
+    ['28/08',166,2244,86.2,71.5],['29/08',2,30,79.9,97.8],['30/08',177,2802,93.2,61.9],
+    ['31/08',58,766,90.0,65.8]
+  ];
+
+  /* [kho, nhà vận tải, chuyến, <50, 50-70, 70-95, >=95, đụng trần, cơ hội, bị chặn, đầy khối, đầy tấn]
+     `đụng trần` = countIf(vfr_max = 100). Phải dùng ĐÚNG ngưỡng này ở mọi chỗ:
+     ngưỡng >= 99,999 cho 1.496 còn = 100 cho 1.488, và cột 100 của biểu đồ phân
+     bố đếm theo = 100 — hai ngưỡng trên cùng một trang là hai con số đánh nhau. */
+  var TREE = [
+    ['BKD1','ANH SON',     1372, 47,30,333, 962, 610, 1605, 629, 92.6, 66.2],
+    ['BKD1','THANH AN',     161,  4, 0, 45, 112,  73,  151,  11, 96.0, 56.5],
+    ['BKD1','NGUYEN PHAT',  176,  5, 3, 52, 116,  82,  174,   5, 96.5, 59.7],
+    ['BKD1','HVP',            5,  0, 0,  0,   5,   3,    1,   0, 112.3, 56.3],
+    ['NKD','HDA',          1252, 10,12,458, 772, 391, 1131, 357, 93.3, 61.7],
+    ['NKD','TLL',           230,  1, 0, 72, 157,  77,  222,  20, 96.2, 54.8],
+    ['VN821','ANH SON',     344, 13, 4, 91, 236, 102,  329, 545, 84.1, 79.4],
+    ['VN821','THANH AN',     88,  1, 1, 34,  52,  28,   96,  35, 91.8, 73.2],
+    ['VN821','NGUYEN PHAT',  71,  0, 0, 24,  47,  21,   66,  31, 93.4, 72.1],
+    ['VN831','HDA',         455,  3, 1,132, 319,  99,  393, 317, 91.4, 68.7],
+    ['VN831','TLL',           7,  0, 0,  1,   6,   2,    3,   0, 97.5, 55.6]
+  ];
+
+  /* Tỷ lệ đầy ở mức KHO phải truy vấn riêng, KHÔNG lấy trung bình cộng của các
+     nhà vận tải con — mẫu số khác nhau thì cộng trung bình ra số vô nghĩa. */
+  var KHO_FILL = { 'BKD1':[93.4,64.4], 'NKD':[93.9,60.1], 'VN821':[87.1,76.8], 'VN831':[91.5,68.5] };
+
+  var TARGET = 85;
+
+  /* ============================================= TẦNG 2 · chip bốn dải === */
+  var activeBand = null;
+  function renderBandChips() {
+    var host = document.getElementById('bandchips');
+    host.innerHTML = BANDS.map(function (b) {
+      var pctTrips = (b.n * 100 / TOTAL_TRIPS).toFixed(1).replace('.', ',');
+      var pctCo    = (b.co * 100 / TOTAL_CO).toFixed(1).replace('.', ',');
+      return '<button class="bc" type="button" data-k="' + b.k + '" style="color:var(' + b.tok + ')"' +
+             ' aria-pressed="' + (activeBand === b.k ? 'true' : 'false') + '">' +
+               '<span class="bl">' + b.lb + '</span>' +
+               '<span class="bn tnum">' + VN(b.n) + '<small>chuyến · ' + pctTrips + '%</small></span>' +
+               '<span class="bf">cơ hội <b class="tnum">' + VN(b.co) + ' CBM</b> · ' + pctCo + '%' +
+                 (b.ch > 0 ? ' <span class="bch">· ' + VN(b.ch) + ' bị chặn</span>' : '') +
+               '</span>' +
+               '<span class="bp">≈ <b class="tnum">' + String(b.per).replace('.', ',') + ' CBM</b> mỗi chuyến</span>' +
+             '</button>';
+    }).join('');
+    Array.prototype.forEach.call(host.querySelectorAll('.bc'), function (el) {
+      el.addEventListener('click', function () {
+        activeBand = (activeBand === el.dataset.k) ? null : el.dataset.k;
+        renderBandChips();
+        buildHist();
+        /* Trả tiêu điểm về đúng nút vừa bấm: renderBandChips() thay cả innerHTML
+           nên nút cũ bị tháo khỏi DOM và tiêu điểm rơi về body. */
+        var again = host.querySelector('.bc[data-k="' + el.dataset.k + '"]');
+        if (again) again.focus();
+      });
+    });
+  }
+
+  function bandOf(v) {
+    if (v < 50) return 'b1';
+    if (v < 70) return 'b2';
+    if (v < 95) return 'b3';
+    return 'b4';
+  }
+
+  /* ================================================ TẦNG 2 · biểu đồ ===== */
+  var chartHist = null, chartTrend = null;
+
+  function buildHist() {
+    var el = document.getElementById('hist');
+    if (!window.echarts) { el.textContent = 'Không tải được thư viện biểu đồ.'; return; }
+    if (chartHist) { chartHist.dispose(); chartHist = null; }
+    chartHist = echarts.init(el, null, { renderer: 'svg' });
+
+    var ink = T('--chart-ink'), grid = T('--chart-grid'), mute = T('--fg-mute');
+    var tokBand = { b1: T('--rag-bad'), b2: T('--st-risk-1'), b3: T('--st-ok-1'), b4: T('--st-ok-3') };
+    var violet = T('--series-violet'), amber = T('--st-risk-1'), neutral = T('--series-neutral');
+
+    var cats = HIST.map(function (r) { return r[0] === 100 ? '100' : r[0] + '–' + (r[0] + 5); });
+
+    function dim(k) { return activeBand && activeBand !== k ? 0.28 : 1; }
+
+    var barsTrips = HIST.map(function (r) {
+      var k = bandOf(r[0]);
+      /* Cột 100 tách khỏi thang bốn dải: đụng trần không phải tốt cũng không
+         phải xấu — nó là KHÔNG ĐO ĐƯỢC. Cho nó màu RAG là nói dối. */
+      var col = (r[0] === 100) ? violet : tokBand[k];
+      return { value: r[1], itemStyle: { color: col, opacity: dim(k) } };
+    });
+    /* Panel dưới xếp CHỒNG hai lớp: cơ hội (cam) + bị trần tấn chặn (xám).
+       Cùng bộ màu với dải ở đầu trang, nên đọc một lần là hiểu cả hai chỗ.
+       Cột 100 vì thế thành XÁM TOÀN BỘ — nói thẳng: ở đây không còn gì để lấy. */
+    var barsCo = HIST.map(function (r) {
+      var k = bandOf(r[0]);
+      return { value: r[2], itemStyle: { color: amber, opacity: dim(k) } };
+    });
+    var barsBlocked = HIST.map(function (r) {
+      var k = bandOf(r[0]);
+      return { value: r[3], itemStyle: { color: neutral, opacity: dim(k) } };
+    });
+    /* Chở VƯỢT vẽ ÂM, dưới vạch 0. Đây là chiều ngược với chỗ trống nên không
+       được cộng vào cùng phía — vẽ cùng phía là nói dối về dấu. */
+    var barsOver = HIST.map(function (r) {
+      var k = bandOf(r[0]);
+      return { value: r[4] ? -r[4] : 0, itemStyle: { color: violet, opacity: dim(k) } };
+    });
+
+    chartHist.setOption({
+      animationDuration: 550,
+      textStyle: { fontFamily: FONT },
+      /* Hai panel = hai câu hỏi khác nhau, nên mỗi panel có TIÊU ĐỀ riêng chứ
+         không chỉ là tên trục màu mờ. Không có nó thì người đọc không biết hàng
+         dưới đang đếm gì. */
+      title: [
+        { text: 'Số chuyến', left: 2, top: 0,
+          textStyle: { color: ink, fontSize: 12.5, fontWeight: 600 } },
+        { text: 'Thể tích', left: 2, top: '48%',
+          textStyle: { color: ink, fontSize: 12.5, fontWeight: 600 } }
+      ],
+      /* Legend thật thay cho dòng "vàng: … · xám: …" viết tay: ô màu lấy thẳng
+         từ series nên không bao giờ lệch khỏi màu đang vẽ, và đổi theme thì nó
+         tự đổi theo. selectedMode:false — legend ở đây chỉ để ĐỌC; cho bấm tắt
+         series thì trạng thái đó sẽ bị xoá mỗi lần bấm một dải (buildHist dựng
+         lại chart), thành ra bấm xong nó tự bật lại. */
+      legend: {
+        data: ['CBM cơ hội', 'CBM bị trần tải trọng chặn', 'CBM chở vượt đăng ký'],
+        left: 74, top: '47.4%',
+        itemWidth: 12, itemHeight: 9, itemGap: 18,
+        selectedMode: false, icon: 'roundRect',
+        textStyle: { color: mute, fontSize: 11 }
+      },
+      grid: [
+        { left: 8, right: 12, top: 30, height: '38%', containLabel: true },
+        { left: 8, right: 12, top: '62%', bottom: 28, containLabel: true }
+      ],
+      axisPointer: { link: [{ xAxisIndex: 'all' }] },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: T('--tip-bg'), borderWidth: 0,
+        textStyle: { color: T('--tip-fg'), fontSize: 12 },
+        formatter: function (ps) {
+          var i = ps[0].dataIndex, r = HIST[i];
+          var per = r[1] ? (r[2] / r[1]) : 0;
+          var s = '<b>' + (r[0] === 100 ? 'Đúng 100% — đụng trần' : 'Mức ' + cats[i] + '%') + '</b><br>' +
+                  '<span style="color:' + T('--tip-blue') + '">Số chuyến</span>: ' + VN(r[1]) + '<br>' +
+                  '<span style="color:' + T('--tip-red') + '">Chở thêm được</span>: ' + VN(r[2]) + ' CBM' +
+                    ' <i>(' + per.toFixed(1).replace('.', ',') + ' mỗi chuyến)</i><br>' +
+                  '<span style="color:' + T('--tip-fg') + '">Bị trần tải trọng chặn</span>: ' + VN(r[3]) + ' CBM';
+          if (r[4]) {
+            s += '<br><span style="color:' + T('--tip-violet') + '">Chở vượt đăng ký</span>: ' + VN(r[4]) + ' CBM trên 1.202 chuyến';
+          }
+          return s;
+        }
+      },
+      xAxis: [
+        { type: 'category', gridIndex: 0, data: cats, axisTick: { show: false },
+          axisLine: { lineStyle: { color: grid } }, axisLabel: { show: false } },
+        { type: 'category', gridIndex: 1, data: cats, axisTick: { show: false },
+          axisLine: { lineStyle: { color: grid } },
+          axisLabel: { color: mute, fontSize: 10, interval: 1, rotate: 0,
+            formatter: function (v) { return v.split('–')[0]; } } }
+      ],
+      yAxis: [
+        { type: 'value', gridIndex: 0, splitNumber: 4, splitLine: { lineStyle: { color: grid } },
+          axisLabel: { color: mute, fontSize: 10 } },
+        { type: 'value', gridIndex: 1, min: -1500, max: 1500, interval: 750,
+          splitLine: { lineStyle: { color: grid } },
+          axisLabel: { color: mute, fontSize: 10 } }
+      ],
+      series: [
+        { type: 'bar', name: 'Số chuyến', xAxisIndex: 0, yAxisIndex: 0, data: barsTrips, barCategoryGap: '22%',
+          markLine: {
+            silent: true, symbol: 'none',
+            lineStyle: { color: ink, type: 'dashed', width: 1.4, opacity: .65 },
+            /* Không có rotate:0 thì ECharts xoay nhãn dọc theo đường — vạch dọc
+               nên chữ nằm dọc, đọc phải nghiêng đầu. */
+            label: { formatter: 'mục tiêu 85%', color: ink, fontSize: 11, position: 'insideEndTop', rotate: 0, distance: 4 },
+            /* 16,5 = ranh giới giữa cột `80–85` và cột `85–90`. Đặt 16 thì vạch
+               rơi vào GIỮA cột 80–85, tức lệch một nửa cột so với mốc 85 thật. */
+            data: [{ xAxis: 16.5 }]
+          } },
+        { type: 'bar', name: 'CBM cơ hội', xAxisIndex: 1, yAxisIndex: 1, data: barsCo,
+          stack: 'slack', barCategoryGap: '22%', itemStyle: { color: amber } },
+        { type: 'bar', name: 'CBM bị trần tải trọng chặn', xAxisIndex: 1, yAxisIndex: 1, data: barsBlocked,
+          stack: 'slack', barCategoryGap: '22%', itemStyle: { color: neutral } },
+        { type: 'bar', name: 'CBM chở vượt đăng ký', xAxisIndex: 1, yAxisIndex: 1, data: barsOver,
+          stack: 'slack', barCategoryGap: '22%', itemStyle: { color: violet } }
+      ]
+    });
+  }
+
+  /* ================================================ TẦNG 3 · ma trận ===== */
+  function renderMatrix() {
+    var plot = document.getElementById('mxplot');
+    var maxN = MX.reduce(function (m, r) { return Math.max(m, r[2]); }, 0);
+    var lookup = {};
+    MX.forEach(function (r) { lookup[r[0] + '|' + r[1]] = r[2]; });
+
+    /* Xoá ô cũ nhưng GIỮ lại đường chéo và hai nhãn vùng. */
+    Array.prototype.forEach.call(plot.querySelectorAll('.cell'), function (c) { c.remove(); });
+
+    var frag = document.createDocumentFragment();
+    for (var yi = 9; yi >= 0; yi--) {          /* hàng trên cùng = tấn 90–100 */
+      for (var xi = 0; xi <= 9; xi++) {
+        var tan = yi * 10, khoi = xi * 10;
+        var n = lookup[tan + '|' + khoi] || 0;
+        var d = document.createElement('div');
+        d.className = 'cell';
+        if (n > 0) {
+          /* Căn bậc hai để các ô nhỏ còn nhìn thấy: chênh lệch 1 → 304 mà tuyến
+             tính thì 70 ô đầu biến mất hết. Trần 92% để ô đậm nhất vẫn không
+             đen kịt trên nền tối. */
+          var i = Math.round(8 + 84 * Math.sqrt(n / maxN));
+          d.setAttribute('data-n', n);
+          d.style.setProperty('--i', i);
+          d.title = n + ' chuyến · tấn ' + tan + '–' + (tan + 10) + '% · khối ' + khoi + '–' + (khoi + 10) + '%';
+        } else {
+          d.title = 'không có chuyến · tấn ' + tan + '–' + (tan + 10) + '% · khối ' + khoi + '–' + (khoi + 10) + '%';
+        }
+        frag.appendChild(d);
+      }
+    }
+    plot.insertBefore(frag, plot.firstChild);
+
+    document.getElementById('mxy').innerHTML =
+      [90,80,70,60,50,40,30,20,10,0].map(function (v) { return '<span>' + v + '</span>'; }).join('');
+    document.getElementById('mxx').innerHTML =
+      [0,10,20,30,40,50,60,70,80,90].map(function (v) { return '<span>' + v + '</span>'; }).join('');
+  }
+
+  /* ================================================= TẦNG 4 · chiều ====== */
+  var activeDim = 'kv', dimSort = 'co';
+  function renderDims() {
+    var rows = DIMS[activeDim].slice();
+    rows.sort(function (a, b) { return dimSort === 'vfr' ? a[2] - b[2] : b[4] - a[4]; });
+    /* Thanh chỗ trống dài theo TỔNG (cơ hội + bị chặn) rồi mới chia hai màu —
+       có thế mới thấy nơi nào trống nhiều mà phần lấy được lại ít. */
+    var maxSlack = rows.reduce(function (m, r) { return Math.max(m, r[4] + r[5]); }, 0);
+    /* Thanh %VFR giữ thang 0–100, KHÔNG zoom về vùng dữ liệu: đây là thanh tỷ lệ
+       (bullet), phần tô phải đúng tỷ lệ với giá trị. Hệ quả là mọi thanh trông
+       gần bằng nhau — chính điều đó là thông tin, và là lý do cột Cơ hội phải có. */
+    document.getElementById('dimrows').innerHTML = rows.map(function (r) {
+      var slackW = maxSlack ? Math.max(4, (r[4] + r[5]) * 100 / maxSlack) : 0;
+      var tok = r[2] >= TARGET ? '--rag-good' : (r[2] >= TARGET - 10 ? '--rag-warn' : '--rag-bad');
+      return '<div class="dr">' +
+        '<span class="dn" title="' + r[0] + '">' + r[0] + '<small class="tnum">' + VN(r[1]) + ' chuyến</small></span>' +
+        '<span class="brow" title="%VFR weighted ' + r[2] + '%">' +
+          '<i style="width:' + Math.min(100, r[2]) + '%;background:var(' + tok + ')"></i>' +
+          '<span class="mk" style="left:' + TARGET + '%"></span></span>' +
+        '<span class="vfrv tnum" style="color:var(' + tok + ')">' + r[2].toFixed(2).replace('.', ',') + '%</span>' +
+        '<span class="vol tnum">' + VN(r[3]) + '</span>' +
+        '<span class="lost" title="cơ hội ' + VN(r[4]) + ' CBM · bị trần tải trọng chặn ' + VN(r[5]) + ' CBM">' +
+          '<span class="ln tnum">' + VN(r[4]) + '</span>' +
+          '<span class="lb" style="width:' + slackW + '%">' +
+            '<i style="flex:' + Math.max(r[4], 0.0001) + ';background:var(--st-risk-1)"></i>' +
+            (r[5] > 0 ? '<i style="flex:' + r[5] + ';background:var(--series-neutral)"></i>' : '') +
+          '</span>' +
+        '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  document.getElementById('dimsort').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-s]');
+    if (!b) return;
+    dimSort = b.dataset.s;
+    Array.prototype.forEach.call(this.querySelectorAll('button'), function (x) {
+      x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+    });
+    renderDims();
+  });
+
+  document.getElementById('dimtabs').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-k]');
+    if (!b) return;
+    activeDim = b.dataset.k;
+    Array.prototype.forEach.call(this.querySelectorAll('button'), function (x) {
+      x.setAttribute('aria-selected', x === b ? 'true' : 'false');
+    });
+    renderDims();
+  });
+
+  /* ================================================ TẦNG 5 · xu hướng === */
+  function buildTrend() {
+    var el = document.getElementById('trend');
+    if (!window.echarts) { el.textContent = 'Không tải được thư viện biểu đồ.'; return; }
+    if (chartTrend) { chartTrend.dispose(); chartTrend = null; }
+    chartTrend = echarts.init(el, null, { renderer: 'svg' });
+
+    var grid = T('--chart-grid'), mute = T('--fg-mute');
+    var blue = T('--series-blue'), neutral = T('--series-neutral'), ink = T('--chart-ink');
+
+    chartTrend.setOption({
+      animationDuration: 550,
+      textStyle: { fontFamily: FONT },
+      grid: { left: 8, right: 12, top: 34, bottom: 26, containLabel: true },
+      legend: { top: 0, left: 0, itemWidth: 14, itemHeight: 8, textStyle: { color: mute, fontSize: 11.5 } },
+      tooltip: {
+        trigger: 'axis', backgroundColor: T('--tip-bg'), borderWidth: 0,
+        textStyle: { color: T('--tip-fg'), fontSize: 12 },
+        formatter: function (ps) {
+          var i = ps[0].dataIndex, r = TREND[i];
+          return '<b>' + r[0] + '/2026</b> · ' + VN(r[1]) + ' chuyến<br>' +
+            '<span style="color:' + T('--tip-blue') + '">Sản lượng</span>: ' + VN(r[2]) + ' CBM<br>' +
+            '<span style="color:' + T('--tip-blue') + '">Đầy thể tích</span>: ' + String(r[3]).replace('.', ',') + '%<br>' +
+            '<span style="color:' + T('--tip-green') + '">Đầy tải trọng</span>: ' + String(r[4]).replace('.', ',') + '%';
+        }
+      },
+      xAxis: {
+        type: 'category', data: TREND.map(function (r) { return r[0]; }),
+        axisTick: { show: false }, axisLine: { lineStyle: { color: grid } },
+        axisLabel: { color: mute, fontSize: 10, interval: 1 },
+        axisPointer: { type: 'line', lineStyle: { color: grid } }
+      },
+      yAxis: [
+        { type: 'value', splitLine: { lineStyle: { color: grid } }, axisLabel: { show: false } },
+        { type: 'value', min: 50, max: 100, interval: 10, position: 'right',
+          splitLine: { show: false }, axisLabel: { color: mute, fontSize: 10, formatter: '{value}%' } }
+      ],
+      series: [
+        { name: 'Sản lượng (CBM)', type: 'bar', yAxisIndex: 0,
+          data: TREND.map(function (r) { return r[2]; }),
+          itemStyle: { color: blue, opacity: .32, borderRadius: [3, 3, 0, 0] },
+          emphasis: { itemStyle: { opacity: .8 } },
+          label: { show: false } },
+        { name: 'Đầy thể tích', type: 'line', yAxisIndex: 1, smooth: false, symbol: 'circle', symbolSize: 5,
+          data: TREND.map(function (r) { return r[3]; }),
+          lineStyle: { color: blue, width: 2.4 }, itemStyle: { color: blue } },
+        { name: 'Đầy tải trọng', type: 'line', yAxisIndex: 1, smooth: false, symbol: 'circle', symbolSize: 5,
+          data: TREND.map(function (r) { return r[4]; }),
+          lineStyle: { color: neutral, width: 2.4 }, itemStyle: { color: neutral },
+          markLine: {
+            silent: true, symbol: 'none',
+            lineStyle: { color: ink, type: 'dashed', width: 1.3, opacity: .6 },
+            label: { formatter: 'mục tiêu 85%', color: ink, fontSize: 10.5, position: 'insideStartTop' },
+            data: [{ yAxis: 85 }]
+          } }
+      ]
+    });
+  }
+
+  /* =================================================== TẦNG 6 · bảng ===== */
+  var openKho = {};
+  function renderTable() {
+    var khos = [];
+    TREE.forEach(function (r) { if (khos.indexOf(r[0]) < 0) khos.push(r[0]); });
+
+    var html = '', tot = [0,0,0,0,0,0,0,0];
+    khos.forEach(function (k) {
+      var kids = TREE.filter(function (r) { return r[0] === k; });
+      var s = [0,0,0,0,0,0,0,0];
+      kids.forEach(function (r) {
+        for (var i = 0; i < 6; i++) s[i] += r[i + 2];
+        s[6] += r[8];   /* cơ hội  */
+        s[7] += r[9];   /* bị chặn */
+      });
+      for (var i = 0; i < 8; i++) tot[i] += s[i];
+      var isOpen = !!openKho[k];
+      html += '<tr class="kho"><td><span class="tw">' +
+        '<button type="button" data-kho="' + k + '" aria-expanded="' + isOpen + '" aria-label="Mở rộng ' + k + '">' +
+        (isOpen ? '−' : '+') + '</button>' + k + '</span></td>' +
+        '<td class="tnum">' + VN(s[0]) + '</td>' +
+        '<td class="tnum b1">' + VN(s[1]) + '</td>' +
+        '<td class="tnum b2">' + VN(s[2]) + '</td>' +
+        '<td class="tnum b3">' + VN(s[3]) + '</td>' +
+        '<td class="tnum b4">' + VN(s[4]) + '</td>' +
+        '<td class="tnum cap">' + VN(s[5]) + '</td>' +
+        '<td class="tnum">' + String(KHO_FILL[k][0]).replace('.', ',') + '%</td>' +
+        '<td class="tnum">' + String(KHO_FILL[k][1]).replace('.', ',') + '%</td>' +
+        '<td class="tnum lost">' + VN(s[6]) + '</td>' +
+        '<td class="tnum per">' + PER(s[6], s[0]) + '</td>' +
+        '<td class="tnum blocked">' + VN(s[7]) + '</td></tr>';
+
+      if (isOpen) {
+        kids.forEach(function (r) {
+          html += '<tr class="kid"><td>' + r[1] + '</td>' +
+            '<td class="tnum">' + VN(r[2]) + '</td>' +
+            '<td class="tnum b1">' + VN(r[3]) + '</td>' +
+            '<td class="tnum b2">' + VN(r[4]) + '</td>' +
+            '<td class="tnum b3">' + VN(r[5]) + '</td>' +
+            '<td class="tnum b4">' + VN(r[6]) + '</td>' +
+            '<td class="tnum cap">' + VN(r[7]) + '</td>' +
+            '<td class="tnum">' + String(r[10]).replace('.', ',') + '%</td>' +
+            '<td class="tnum">' + String(r[11]).replace('.', ',') + '%</td>' +
+            '<td class="tnum lost">' + VN(r[8]) + '</td>' +
+            '<td class="tnum per">' + PER(r[8], r[2]) + '</td>' +
+            '<td class="tnum blocked">' + VN(r[9]) + '</td></tr>';
+        });
+      }
+    });
+
+    html += '<tr class="tot"><td>Tổng</td>' +
+      '<td class="tnum">' + VN(tot[0]) + '</td>' +
+      '<td class="tnum b1">' + VN(tot[1]) + '</td>' +
+      '<td class="tnum b2">' + VN(tot[2]) + '</td>' +
+      '<td class="tnum b3">' + VN(tot[3]) + '</td>' +
+      '<td class="tnum b4">' + VN(tot[4]) + '</td>' +
+      '<td class="tnum cap">' + VN(tot[5]) + '</td>' +
+      '<td class="tnum">92,6%</td><td class="tnum">64,7%</td>' +
+      '<td class="tnum lost">' + VN(tot[6]) + '</td>' +
+      '<td class="tnum per">' + PER(tot[6], tot[0]) + '</td>' +
+      '<td class="tnum blocked">' + VN(tot[7]) + '</td></tr>';
+
+    document.getElementById('tbody').innerHTML = html;
+  }
+
+  document.getElementById('tbody').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-kho]');
+    if (!b) return;
+    var k = b.dataset.kho;
+    openKho[k] = !openKho[k];
+    renderTable();
+    var again = document.querySelector('#tbody button[data-kho="' + k + '"]');
+    if (again) again.focus();
+  });
+
+  /* ======================================================== khởi động === */
+  function repaint() {
+    /* Ba việc, theo đúng thứ tự: đọc lại token → vẽ lại phần tính màu trong JS
+       → dựng lại chart. Bỏ bước nào thì phần đó giữ màu của theme cũ. */
+    renderDims();
+    renderMatrix();
+    buildHist();
+    buildTrend();
+  }
+
+  var saved = stored('ct-vfr-theme');
+  if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
+  paintTheme();
+  mq.addEventListener('change', function () { paintTheme(); repaint(); });
+  bLight.addEventListener('click', function () { root.setAttribute('data-theme', 'light'); stored('ct-vfr-theme', 'light'); paintTheme(); repaint(); });
+  bDark.addEventListener('click',  function () { root.setAttribute('data-theme', 'dark');  stored('ct-vfr-theme', 'dark');  paintTheme(); repaint(); });
+
+  /* Liên kết hai chiều giữa phần trống của thanh Thể tích và dải chỗ trống.
+     Dùng focus/blur nữa để người đi bằng bàn phím cũng thấy được liên kết. */
+  (function () {
+    var hero = document.querySelector('.hero');
+    var zone = document.getElementById('gapzone');
+    var strip = document.querySelector('.slack');
+    if (!hero || !zone || !strip) return;
+    function on()  { hero.classList.add('link-slack'); }
+    function off() { hero.classList.remove('link-slack'); }
+    [zone, strip].forEach(function (el) {
+      el.addEventListener('mouseenter', on);
+      el.addEventListener('mouseleave', off);
+    });
+    zone.addEventListener('focus', on);
+    zone.addEventListener('blur', off);
+  })();
+
+  renderBandChips();
+  renderTable();
+  repaint();
+
+  var rt = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(rt);
+    rt = setTimeout(function () {
+      if (chartHist) chartHist.resize();
+      if (chartTrend) chartTrend.resize();
+    }, 120);
+  });
+})();
+</script>
+</body>
+</html>

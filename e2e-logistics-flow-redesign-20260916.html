@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>E2E Logistics Flow - Mission Control</title>
+<!-- Tailwind CSS v3 with Forms and Container-Queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0284c7',
+              600: '#0369a1',
+              900: '#082f49',
+            },
+            status: {
+              success: '#10b981',
+              warning: '#f59e0b',
+              danger: '#ef4444',
+              info: '#3b82f6',
+              neutral: '#64748b'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+<!-- Google Fonts for crisp typography -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<style data-purpose="custom-radial-and-utilities">
+    /* ------------------------------------------------------------------
+       Gauge meter dynamic stroke styling
+       ------------------------------------------------------------------ */
+    .gauge-circle {
+      transition: stroke-dashoffset 0.8s ease-in-out;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+
+    /* --- (5) Running-light sweep on the two Completion Status gauges ----
+       A short bright dash (dasharray "14 600" - on-length 14, gap 600 far
+       exceeds the 301.6 path length so only ONE burst ever renders) travels
+       across exactly the coloured arc's own span by animating
+       stroke-dashoffset between the SAME two numbers used to draw that arc
+       (301.6 = empty start -> the arc's real end offset). It can never spill
+       into the grey remainder because the animation never goes past that
+       bound. Opacity fades in/out at the loop seams so the reset is invisible. */
+    /* Running-light dot: swept around the ring centre via rotate+translate,
+       no SVG involved. Angles below are measured LIVE from the real gauge
+       (getPointAtLength + getScreenCTM), not guessed: the SVG has TWO
+       stacked -90deg rotations (the <svg class="-rotate-90"> wrapper, plus
+       .gauge-circle's own transform), which compound to -180deg - so the
+       arc's true start is 9 o'clock (180deg), not 12. End angle is written
+       as start+sweep (never as a negative/mod value), because CSS
+       interpolates rotate() as a literal number: animating 180deg -> -45deg
+       spins the LONG way round through the grey track. 314.28deg = 180 +
+       37.30% of 360 (gauge 1); 277.45deg = 180 + 27.07% of 360 (gauge 2).
+       translateX radius 57.6px = SVG r48 * 144/120 container scale. */
+    .running-dot {
+      position: absolute; top: 50%; left: 50%; width: 8px; height: 8px;
+      margin: -4px 0 0 -4px; border-radius: 9999px; background: #ffffff;
+      box-shadow: 0 0 10px 3px rgba(255,255,255,.9), 0 0 22px 8px rgba(16,185,129,.65);
+      pointer-events: none;
+      filter: blur(.3px);
+    }
+    @keyframes run-dot-1 {
+      0%   { transform: rotate(180deg) translateX(57.6px); opacity: 0; }
+      8%   { opacity: 1; }
+      92%  { opacity: 1; }
+      100% { transform: rotate(314.28deg) translateX(57.6px); opacity: 0; }
+    }
+    @keyframes run-dot-2 {
+      0%   { transform: rotate(180deg) translateX(57.6px); opacity: 0; }
+      8%   { opacity: 1; }
+      92%  { opacity: 1; }
+      100% { transform: rotate(277.45deg) translateX(57.6px); opacity: 0; }
+    }
+    .run-dot-1 { animation: run-dot-1 2.4s linear infinite; }
+    .run-dot-2 { animation: run-dot-2 2.8s linear infinite; }
+
+    /* --- (7) Alert icon pulse — one beacon-style ring, cycle ≥1.4s ---- */
+    @keyframes alert-beacon {
+      0%   { box-shadow: 0 0 0 0 rgba(225, 29, 72, .55); }
+      70%  { box-shadow: 0 0 0 11px rgba(225, 29, 72, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
+    }
+    .alert-icon-pulse { animation: alert-beacon 1.8s ease-out infinite; }
+
+    /* --- (8) Dispatched <-> Phase 2 link ------------------------------
+       .flow-row wraps one stream's Phase-1 + Phase-2 pair. Hovering either
+       trigger inside Phase 1 (the "Dispatched Σ" tile or the emerald
+       segment of its mini bar) makes the wrapping row match :hover via
+       :has(), which lights up the sibling Phase-2 box. Scoped per-row, so
+       the Volume stream and the Trip stream never cross-light each other,
+       and hovering any OTHER tile (Not Dispatched / Dispatching) does not
+       trigger it. */
+    .phase2-box {
+      transition: transform .32s cubic-bezier(.34,1.56,.64,1),
+                  box-shadow .32s cubic-bezier(.34,1.56,.64,1),
+                  border-color .22s ease;
+    }
+    .dispatch-trigger {
+      cursor: pointer;
+      transition: filter .18s ease, transform .28s cubic-bezier(.34,1.56,.64,1),
+                  box-shadow .22s ease, background-color .22s ease;
+      border-radius: 8px;
+    }
+    .flow-row:has(.dispatch-trigger:hover) .phase2-box {
+      transform: translateY(-6px) scale(1.015);
+      border-color: #10b981;
+      box-shadow: 0 20px 38px -12px rgba(16, 185, 129, .5),
+                  0 6px 14px -6px rgba(16, 185, 129, .35),
+                  0 0 0 1.5px rgba(16, 185, 129, .55);
+    }
+    .flow-row:has(.dispatch-trigger:hover) .dispatch-trigger {
+      filter: brightness(1.1);
+      transform: scale(1.04);
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, .45), 0 6px 14px -6px rgba(16, 185, 129, .4);
+    }
+    .dark .flow-row:has(.dispatch-trigger:hover) .phase2-box {
+      border-color: #34d399;
+      box-shadow: 0 20px 40px -10px rgba(16, 185, 129, .6),
+                  0 6px 16px -6px rgba(52, 211, 153, .4),
+                  0 0 0 1.5px rgba(52, 211, 153, .6);
+    }
+    .dark .flow-row:has(.dispatch-trigger:hover) .dispatch-trigger {
+      box-shadow: 0 0 0 2px rgba(52, 211, 153, .5), 0 6px 14px -6px rgba(52, 211, 153, .45);
+    }
+
+    /* --- 4-dimension breakdown bars: one square-cornered block per row,
+       green=delivered / grey=remaining, bar LENGTH itself encodes the
+       dimension's own volume relative to the largest dimension in that
+       same chart (set inline per-row, not here). Hovering anywhere in the
+       panel (.dim-chart) sweeps a soft light across every grey "remaining"
+       segment at once, each row staggered via its own animation-delay, so
+       it reads as one wave rather than a synced blink. */
+    .dim-bar-remain { position: relative; overflow: hidden; }
+    .dim-bar-glint {
+      position: absolute; top: 0; left: -24px; height: 100%; width: 24px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.9), transparent);
+      opacity: 0; pointer-events: none;
+    }
+    .dark .dim-bar-glint {
+      background: linear-gradient(90deg, transparent, rgba(110,231,183,.85), transparent);
+    }
+    .dim-chart:hover .dim-bar-glint {
+      opacity: 1;
+      animation: dim-glint-sweep 1.7s ease-in-out infinite;
+    }
+    @keyframes dim-glint-sweep {
+      0%   { left: -24px; }
+      100% { left: 100%; }
+    }
+
+    .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .dark .custom-scrollbar::-webkit-scrollbar-track { background: #0e1622; }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans text-slate-800 dark:text-slate-200 antialiased selection:bg-blue-100 dark:selection:bg-blue-500/30 selection:text-blue-700 dark:selection:text-blue-300 bg-slate-50 dark:bg-[#080e17]">
+<!-- BEGIN: TopNavigationBar -->
+<header class="sticky top-0 z-40 bg-white/95 dark:bg-[#0e141d]/90 border-b border-slate-200/80 dark:border-slate-800/80 shadow-xs dark:shadow-lg backdrop-blur-md" data-purpose="top-navigation">
+<div class="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex items-center justify-between h-16">
+<!-- Left: Branding -->
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-blue-500 dark:to-indigo-600 flex items-center justify-center text-white shadow-md dark:shadow-lg shadow-blue-500/20 ring-1 ring-white/20">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="9"></circle>
+<circle cx="12" cy="12" r="5"></circle>
+<circle cx="12" cy="12" r="1"></circle>
+<path d="M12 3v3m0 12v3M3 12h3m12 0h3" stroke-linecap="round"></path>
+</svg>
+</div>
+<div>
+<div class="flex items-center space-x-2">
+<h1 class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                E2E LOGISTICS FLOW
+                <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">v3.4 Production</span>
+</h1>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Global Supply Chain Control Tower • Warehouse to Final Mile</p>
+</div>
+</div>
+<!-- Right: theme toggle + refresh + config -->
+<div class="flex items-center space-x-3">
+<!-- Theme Toggle -->
+<button class="p-2 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg shadow-xs transition" data-purpose="theme-toggle" title="Toggle theme" type="button">
+<svg class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<svg class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</button>
+<!-- Refresh Action Button -->
+<button class="p-2 text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-lg shadow-xs transition" title="Refresh Feed" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</button>
+<!-- Edit / Config Button -->
+<button class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 active:bg-blue-800 dark:active:bg-blue-700 rounded-lg shadow-sm shadow-blue-500/25 dark:shadow-md transition border border-transparent dark:border-blue-400/30" type="button">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span>Edit Config</span>
+</button>
+</div>
+</div>
+</div>
+</header>
+<!-- END: TopNavigationBar -->
+
+<!-- BEGIN: MainContentContainer -->
+<main class="flex-1 max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+
+<!-- ================= ROW 1: Completion Status | Progress Status Pipeline ================= -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+
+<!-- BEGIN: CompletionStatusCard -->
+<div class="lg:col-span-4 flex">
+<section class="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-slate-200/90 dark:border-slate-800 shadow-sm dark:shadow-lg flex flex-col w-full" data-purpose="completion-radial-gauges">
+<div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+<div>
+<h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+<svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                Completion Status
+              </h3>
+<p class="text-xs text-slate-500 dark:text-slate-400">Volume vs. Trip throughput comparison</p>
+</div>
+<span class="text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 dark:border dark:border-slate-700 px-2.5 py-1 rounded-md">Live Gauge</span>
+</div>
+<!-- Dual Gauge Container -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 content-center">
+<!-- Gauge 1: By UOM (CBM) -->
+<div class="flex flex-col items-center bg-slate-50/70 dark:bg-[#0d1421] rounded-xl p-3.5 border border-slate-150 dark:border-slate-800/90">
+<span class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">By UOM (CBM)</span>
+<div class="relative w-36 h-36 flex items-center justify-center my-1">
+<svg class="w-36 h-36 transform -rotate-90" viewbox="0 0 120 120">
+<circle class="opacity-80 dark:opacity-30" cx="60" cy="60" fill="none" r="48" stroke="#e2e8f0" stroke-width="12"></circle>
+<circle class="dark:hidden" cx="60" cy="60" fill="none" r="48" stroke="#334155" stroke-width="12" opacity="0"></circle>
+<circle class="gauge-circle" cx="60" cy="60" fill="none" r="48" stroke="#10b981" stroke-dasharray="301.6" stroke-dashoffset="188.8" stroke-linecap="round" stroke-width="12"></circle>
+</svg>
+<div class="running-dot run-dot-1"></div>
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+<span class="text-2xl font-black tracking-tight text-slate-900 dark:text-white font-mono">1.221</span>
+<span class="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/70 dark:border dark:border-emerald-500/30 px-2 py-0.5 rounded-full mt-0.5">37.4%</span>
+</div>
+</div>
+<div class="w-full space-y-1.5 mt-2 text-xs border-t border-slate-200/80 dark:border-slate-800 pt-2 font-mono">
+<div class="flex items-center justify-between text-slate-600 dark:text-slate-400">
+<span class="flex items-center gap-1.5 font-sans"><span class="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>Delivered</span>
+<span class="font-bold text-slate-900 dark:text-slate-100">1,221 CBM</span>
+</div>
+<div class="flex items-center justify-between text-slate-600 dark:text-slate-400">
+<span class="flex items-center gap-1.5 font-sans"><span class="w-2 h-2 rounded-full bg-rose-500 dark:bg-rose-400"></span>Cancelled</span>
+<span class="font-semibold text-rose-600 dark:text-rose-400">1.8 CBM</span>
+</div>
+<div class="flex items-center justify-between text-slate-600 dark:text-slate-400">
+<span class="flex items-center gap-1.5 font-sans"><span class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></span>Remaining</span>
+<span class="font-medium text-slate-700 dark:text-slate-300">2,039 CBM</span>
+</div>
+<div class="flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-800 font-bold text-slate-900 dark:text-white">
+<span class="font-sans">Total Planned</span>
+<span class="dark:text-slate-100">3,262 CBM</span>
+</div>
+</div>
+</div>
+<!-- Gauge 2: By Trip -->
+<div class="flex flex-col items-center bg-slate-50/70 dark:bg-[#0d1421] rounded-xl p-3.5 border border-slate-150 dark:border-slate-800/90">
+<span class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">By Trip</span>
+<div class="relative w-36 h-36 flex items-center justify-center my-1">
+<svg class="w-36 h-36 transform -rotate-90" viewbox="0 0 120 120">
+<circle class="opacity-80 dark:opacity-30" cx="60" cy="60" fill="none" r="48" stroke="#e2e8f0" stroke-width="12"></circle>
+<circle class="gauge-circle" cx="60" cy="60" fill="none" r="48" stroke="#059669" stroke-dasharray="301.6" stroke-dashoffset="219.6" stroke-linecap="round" stroke-width="12"></circle>
+</svg>
+<div class="running-dot run-dot-2"></div>
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+<span class="text-2xl font-black tracking-tight text-slate-900 dark:text-white font-mono">40</span>
+<span class="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/70 dark:border dark:border-emerald-500/30 px-2 py-0.5 rounded-full mt-0.5">27.2%</span>
+</div>
+</div>
+<div class="w-full space-y-1.5 mt-2 text-xs border-t border-slate-200/80 dark:border-slate-800 pt-2 font-mono">
+<div class="flex items-center justify-between text-slate-600 dark:text-slate-400">
+<span class="flex items-center gap-1.5 font-sans"><span class="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-500"></span>Completed</span>
+<span class="font-bold text-slate-900 dark:text-slate-100">40 Trips</span>
+</div>
+<div class="flex items-center justify-between text-slate-600 dark:text-slate-400">
+<span class="flex items-center gap-1.5 font-sans"><span class="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"></span>In-Transit</span>
+<span class="font-semibold text-blue-600 dark:text-blue-400">78 Trips</span>
+</div>
+<div class="flex items-center justify-between text-slate-600 dark:text-slate-400">
+<span class="flex items-center gap-1.5 font-sans"><span class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></span>Remaining</span>
+<span class="font-medium text-slate-700 dark:text-slate-300">107 Trips</span>
+</div>
+<div class="flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-800 font-bold text-slate-900 dark:text-white">
+<span class="font-sans">Total Scheduled</span>
+<span class="dark:text-slate-100">147 Trips</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- END: CompletionStatusCard -->
+
+<!-- BEGIN: ProgressPipelineSection -->
+<div class="lg:col-span-8 flex">
+<section class="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-slate-200/90 dark:border-slate-800 shadow-sm dark:shadow-lg flex flex-col w-full" data-purpose="pipeline-progress-status">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
+<div>
+<h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+<svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                Progress Status Pipeline
+              </h3>
+<p class="text-xs text-slate-500 dark:text-slate-400">Live dual-stage telemetry tracking warehouse dispatch to customer hand-off</p>
+</div>
+<div class="flex items-center gap-3 text-[11px] font-semibold">
+<span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><span class="w-2.5 h-2.5 rounded bg-amber-500"></span> Phase 1: At WH</span>
+<span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><span class="w-2.5 h-2.5 rounded bg-emerald-500"></span> Phase 2: On The Road</span>
+</div>
+</div>
+
+<!-- STREAM 1: E2E Flow by Volume -->
+<div class="mt-3 p-3 rounded-xl bg-slate-50/60 dark:bg-[#0c121e] border border-slate-200 dark:border-slate-800/90" data-purpose="flow-stream-volume">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center space-x-2">
+<span class="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-400 dark:border dark:border-blue-800/60">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</span>
+<span class="text-sm font-bold text-slate-900 dark:text-white">E2E Flow by Volume</span>
+<span class="text-xs font-mono font-medium text-slate-500 dark:text-slate-300 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">Plan 3,262 CBM</span>
+</div>
+<span class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 dark:border dark:border-blue-800/50 px-2 py-1 rounded">Overall Delivered: 37.4%</span>
+</div>
+<!-- Two Stages Side-by-Side (WH and On The Way) -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-3 flow-row">
+<!-- WH Stage (7 cols) -->
+<div class="md:col-span-7 bg-white dark:bg-[#131b2b] rounded-xl p-2.5 border border-amber-200/90 dark:border-amber-500/30 shadow-2xs relative">
+<div class="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
+<div class="flex items-center space-x-1.5">
+<svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span class="text-xs font-black tracking-wider text-amber-800 dark:text-amber-300 uppercase">Phase 1: At WH</span>
+</div>
+<span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">Total WH Ready: 3,260 CBM</span>
+</div>
+<div class="grid grid-cols-3 gap-2 mt-2">
+<div class="text-left">
+<div class="flex items-center space-x-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+<span>Not Dispatched</span>
+</div>
+<div class="mt-1 flex items-baseline space-x-1">
+<span class="text-lg font-black text-slate-800 dark:text-white font-mono">2</span>
+<span class="text-[10px] font-medium text-slate-400 dark:text-slate-500">0.0%</span>
+</div>
+</div>
+<div class="text-left">
+<div class="flex items-center space-x-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+<span>Dispatching</span>
+</div>
+<div class="mt-1 flex items-baseline space-x-1">
+<span class="text-lg font-black text-slate-800 dark:text-white font-mono">628</span>
+<span class="text-[10px] font-medium text-slate-400 dark:text-slate-500">19.2%</span>
+</div>
+</div>
+<!-- Metric: Dispatched Sum — hover trigger (a) -->
+<div class="text-left bg-emerald-50/50 dark:bg-emerald-950/40 p-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/30 dispatch-trigger" title="Dispatched = In Transit + Completed">
+<div class="flex items-center space-x-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+<span>Dispatched Σ</span>
+</div>
+<div class="mt-0.5 flex items-baseline space-x-1">
+<span class="text-lg font-black text-emerald-900 dark:text-emerald-300 font-mono">2,632</span>
+<span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">80.7%</span>
+</div>
+</div>
+</div>
+<!-- Stage 1 Progress Segment Bar — the emerald slice is hover trigger (b) -->
+<div class="w-full bg-slate-100 dark:bg-slate-900 dark:border dark:border-slate-800 h-2 rounded-full mt-2.5 overflow-hidden flex">
+<div class="bg-rose-500 h-full" style="width: 1%"></div>
+<div class="bg-amber-500 h-full" style="width: 19.2%"></div>
+<div class="bg-emerald-500 h-full dispatch-trigger" style="width: 79.8%" title="Dispatched = In Transit + Completed"></div>
+</div>
+</div>
+<!-- Transit Stage (5 cols) — hover target -->
+<div class="md:col-span-5 bg-white dark:bg-[#131b2b] rounded-xl p-2.5 border border-emerald-200/90 dark:border-emerald-500/30 shadow-2xs relative phase2-box">
+<div class="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
+<div class="flex items-center space-x-1.5">
+<svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span class="text-xs font-black tracking-wider text-emerald-800 dark:text-emerald-300 uppercase">Phase 2: On The Way</span>
+</div>
+<span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">Active Rolling</span>
+</div>
+<div class="grid grid-cols-2 gap-2 mt-2">
+<div>
+<div class="flex items-center space-x-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+<span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+<span>In Transit</span>
+</div>
+<div class="mt-1 flex items-baseline space-x-1">
+<span class="text-lg font-black text-blue-900 dark:text-blue-300 font-mono">1,411</span>
+<span class="text-[10px] font-medium text-blue-600 dark:text-blue-400">43.3%</span>
+</div>
+</div>
+<div class="bg-emerald-50/50 dark:bg-emerald-950/40 p-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/30">
+<div class="flex items-center space-x-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-500"></span>
+<span>Completed</span>
+</div>
+<div class="mt-0.5 flex items-baseline space-x-1">
+<span class="text-lg font-black text-emerald-900 dark:text-emerald-300 font-mono">1,221</span>
+<span class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">37.4%</span>
+</div>
+</div>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-900 dark:border dark:border-slate-800 h-2 rounded-full mt-2.5 overflow-hidden flex">
+<div class="bg-blue-500 h-full" style="width: 53.6%"></div>
+<div class="bg-emerald-600 dark:bg-emerald-500 h-full" style="width: 46.4%"></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- STREAM 2: Trip Flow -->
+<div class="mt-3 p-3 rounded-xl bg-slate-50/60 dark:bg-[#0c121e] border border-slate-200 dark:border-slate-800/90" data-purpose="flow-stream-trips">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center space-x-2">
+<span class="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-400 dark:border dark:border-indigo-800/60">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</span>
+<span class="text-sm font-bold text-slate-900 dark:text-white">Trip Flow</span>
+<span class="text-xs font-mono font-medium text-slate-500 dark:text-slate-300 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">147 Trips Scheduled</span>
+</div>
+<span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 dark:border dark:border-emerald-800/50 px-2 py-1 rounded">Trips Arrived: 27.2%</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-3 flow-row">
+<!-- WH Stage (7 cols) -->
+<div class="md:col-span-7 bg-white dark:bg-[#131b2b] rounded-xl p-2.5 border border-amber-200/90 dark:border-amber-500/30 shadow-2xs">
+<div class="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
+<div class="flex items-center space-x-1.5">
+<svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span class="text-xs font-black tracking-wider text-amber-800 dark:text-amber-300 uppercase">Phase 1: At WH</span>
+</div>
+<span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">29 Trips pending departure</span>
+</div>
+<div class="grid grid-cols-3 gap-2 mt-2">
+<div>
+<div class="flex items-center space-x-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+<span>Not Dispatched</span>
+</div>
+<div class="mt-1 flex items-baseline space-x-1">
+<span class="text-lg font-black text-slate-800 dark:text-white font-mono">20</span>
+<span class="text-[10px] font-medium text-slate-400 dark:text-slate-500">13.6%</span>
+</div>
+</div>
+<div>
+<div class="flex items-center space-x-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+<span>Dispatching</span>
+</div>
+<div class="mt-1 flex items-baseline space-x-1">
+<span class="text-lg font-black text-slate-800 dark:text-white font-mono">9</span>
+<span class="text-[10px] font-medium text-slate-400 dark:text-slate-500">6.1%</span>
+</div>
+</div>
+<!-- Dispatched Sum — hover trigger (a) -->
+<div class="bg-emerald-50/50 dark:bg-emerald-950/40 p-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/30 dispatch-trigger" title="Dispatched = In Transit + Completed">
+<div class="flex items-center space-x-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+<span>Dispatched Σ</span>
+</div>
+<div class="mt-0.5 flex items-baseline space-x-1">
+<span class="text-lg font-black text-emerald-900 dark:text-emerald-300 font-mono">118</span>
+<span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">80.3%</span>
+</div>
+</div>
+</div>
+<!-- Stage 1 Trips Bar — emerald slice is hover trigger (b) -->
+<div class="w-full bg-slate-100 dark:bg-slate-900 dark:border dark:border-slate-800 h-2 rounded-full mt-2.5 overflow-hidden flex">
+<div class="bg-rose-500 h-full" style="width: 13.6%"></div>
+<div class="bg-amber-500 h-full" style="width: 6.1%"></div>
+<div class="bg-emerald-500 h-full dispatch-trigger" style="width: 80.3%" title="Dispatched = In Transit + Completed"></div>
+</div>
+</div>
+<!-- Transit Stage (5 cols) — hover target -->
+<div class="md:col-span-5 bg-white dark:bg-[#131b2b] rounded-xl p-2.5 border border-emerald-200/90 dark:border-emerald-500/30 shadow-2xs phase2-box">
+<div class="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
+<div class="flex items-center space-x-1.5">
+<svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span class="text-xs font-black tracking-wider text-emerald-800 dark:text-emerald-300 uppercase">Phase 2: On The Way</span>
+</div>
+<span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">118 Dispatched</span>
+</div>
+<div class="grid grid-cols-2 gap-2 mt-2">
+<div>
+<div class="flex items-center space-x-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+<span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+<span>In Transit</span>
+</div>
+<div class="mt-1 flex items-baseline space-x-1">
+<span class="text-lg font-black text-blue-900 dark:text-blue-300 font-mono">78</span>
+<span class="text-[10px] font-medium text-blue-600 dark:text-blue-400">53.1%</span>
+</div>
+</div>
+<div class="bg-emerald-50/50 dark:bg-emerald-950/40 p-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/30">
+<div class="flex items-center space-x-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-500"></span>
+<span>Completed</span>
+</div>
+<div class="mt-0.5 flex items-baseline space-x-1">
+<span class="text-lg font-black text-emerald-900 dark:text-emerald-300 font-mono">40</span>
+<span class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">27.2%</span>
+</div>
+</div>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-900 dark:border dark:border-slate-800 h-2 rounded-full mt-2.5 overflow-hidden flex">
+<div class="bg-blue-500 h-full" style="width: 66.1%"></div>
+<div class="bg-emerald-600 dark:bg-emerald-500 h-full" style="width: 33.9%"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- END: ProgressPipelineSection -->
+
+</div>
+<!-- ================= END ROW 1 ================= -->
+
+<!-- ================= ROW 2: Alert | Loss-Tree & Diagnostics ================= -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+
+<!-- BEGIN: RiskAndAlertSection -->
+<div class="lg:col-span-4 flex">
+<section class="bg-rose-50/80 dark:bg-gradient-to-b dark:from-[#241117] dark:to-[#1a0f14] border border-rose-200 dark:border-rose-900/60 rounded-2xl p-5 shadow-xs dark:shadow-xl relative overflow-hidden flex flex-col justify-center w-full" data-purpose="at-risk-shipments">
+<div>
+<div class="flex items-start justify-between">
+<div class="flex items-center space-x-3">
+<div class="alert-icon-pulse w-11 h-11 rounded-xl bg-rose-600 dark:bg-rose-600/90 text-white flex items-center justify-center shadow-md dark:shadow-lg shadow-rose-500/20 dark:shadow-rose-600/30 dark:border dark:border-rose-400/30">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
+<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<div>
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 dark:border dark:border-rose-800/80 tracking-wide">Action Required</span>
+<div class="text-3xl font-black text-rose-950 dark:text-white font-mono mt-0.5 leading-none">61</div>
+<p class="text-xs font-bold text-rose-900 dark:text-rose-200 mt-1">Shipments at Risk of Delay</p>
+</div>
+</div>
+<span class="text-xs font-semibold text-rose-700 dark:text-rose-300 bg-white/80 dark:bg-rose-950/80 px-2.5 py-1 rounded-md border border-rose-200 dark:border-rose-800/80 font-mono">
+              41.5% of total
+            </span>
+</div>
+<!-- (3) Risk breakdown — re-labelled to the 3 real delay stages -->
+<div class="grid grid-cols-3 gap-2 mt-4 text-center">
+<div class="bg-white/80 dark:bg-[#170e13]/80 border border-rose-100 dark:border-rose-900/50 rounded-lg p-2">
+<div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">WH Processing Delay</div>
+<div class="text-sm font-bold text-rose-700 dark:text-rose-400 font-mono">22</div>
+</div>
+<div class="bg-white/80 dark:bg-[#170e13]/80 border border-rose-100 dark:border-rose-900/50 rounded-lg p-2">
+<div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Late Departure</div>
+<div class="text-sm font-bold text-amber-700 dark:text-amber-400 font-mono">25</div>
+</div>
+<div class="bg-white/80 dark:bg-[#170e13]/80 border border-rose-100 dark:border-rose-900/50 rounded-lg p-2">
+<div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Late Delivery</div>
+<div class="text-sm font-bold text-slate-700 dark:text-slate-300 font-mono">14</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- END: RiskAndAlertSection -->
+
+<!-- BEGIN: LossTreeSection -->
+<div class="lg:col-span-8 flex">
+<section class="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-slate-200/90 dark:border-slate-800 shadow-sm dark:shadow-lg flex flex-col w-full" data-purpose="loss-tree-rca">
+<div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+<div class="flex items-center space-x-2.5">
+<div class="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-300 dark:border dark:border-slate-700">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</div>
+<div>
+<h3 class="text-base font-bold text-slate-900 dark:text-white">Loss-Tree &amp; Diagnostics</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400">Root cause attribution of unfulfilled or cancelled volume</p>
+</div>
+</div>
+<div class="flex items-center space-x-2">
+<span class="text-xs font-mono font-bold bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/80 px-2.5 py-1 rounded-lg">
+                Total Lost: 1.8 CBM
+              </span>
+</div>
+</div>
+<!-- (4) Horizontal Visual Loss Tree — 3 branches, grounded in real ClickHouse drop reasons (rc_dropped_report, remark_2), 14-day window; total loss ≈0.77% of plan in the real data, kept well under the 1.5% ceiling here -->
+<div class="mt-4 overflow-x-auto custom-scrollbar pb-2 flex-1">
+<div class="min-w-[680px] flex items-center gap-4 h-full">
+<!-- Root Node -->
+<div class="flex-shrink-0 bg-slate-100 dark:bg-[#0c121e] text-slate-900 dark:text-white rounded-xl p-3.5 shadow-md border border-slate-200 dark:border-slate-800 w-44">
+<div class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Root Event</div>
+<div class="text-xs font-semibold text-slate-700 dark:text-slate-200 mt-0.5">Dropped Volume</div>
+<div class="mt-2 flex items-baseline justify-between">
+<span class="text-2xl font-black font-mono text-rose-600 dark:text-rose-400">1.8</span>
+<span class="text-xs font-mono text-slate-500 dark:text-slate-400">CBM</span>
+</div>
+</div>
+<!-- Connector SVG -->
+<div class="flex-shrink-0 text-slate-300 dark:text-slate-600">
+<svg class="w-6 h-12" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 48">
+<path d="M0 24h12m0 0l12 -16m-12 16l12 16" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<!-- Branches -->
+<div class="flex-1 space-y-2.5">
+<!-- Branch 1: real remark_2 text from rc_dropped_report -->
+<div class="bg-slate-50 dark:bg-[#0c121e] hover:bg-slate-100/80 dark:hover:bg-[#101826] transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md cursor-pointer rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+<span class="text-xs font-bold text-slate-900 dark:text-white">Re: ĐỀ XUẤT BÁNH NHÀ MÁY || Hỗ trợ Giao bánh cho Family Day 2026</span>
+<div class="text-right flex-shrink-0">
+<div class="text-base font-black font-mono text-slate-900 dark:text-white">1.00 <span class="text-xs font-normal text-slate-500 dark:text-slate-400">CBM</span></div>
+<div class="text-[11px] font-semibold text-rose-600 dark:text-rose-400">55.6% of loss</div>
+</div>
+</div>
+<!-- Branch 2: real remark_2 text -->
+<div class="bg-slate-50 dark:bg-[#0c121e] hover:bg-slate-100/80 dark:hover:bg-[#101826] transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md cursor-pointer rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+<span class="text-xs font-bold text-slate-900 dark:text-white">After order is finally allocated - Shelf life issue</span>
+<div class="text-right flex-shrink-0">
+<div class="text-base font-black font-mono text-slate-900 dark:text-white">0.50 <span class="text-xs font-normal text-slate-500 dark:text-slate-400">CBM</span></div>
+<div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">27.8% of loss</div>
+</div>
+</div>
+<!-- Branch 3: real remark_2 text -->
+<div class="bg-slate-50 dark:bg-[#0c121e] hover:bg-slate-100/80 dark:hover:bg-[#101826] transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md cursor-pointer rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+<span class="text-xs font-bold text-slate-900 dark:text-white">Mã ngừng sản xuất</span>
+<div class="text-right flex-shrink-0">
+<div class="text-base font-black font-mono text-slate-900 dark:text-white">0.30 <span class="text-xs font-normal text-slate-500 dark:text-slate-400">CBM</span></div>
+<div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">16.7% of loss</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- END: LossTreeSection -->
+
+</div>
+<!-- ================= END ROW 2 ================= -->
+
+<!-- ================= ROW 3: Warehouse | Channel ================= -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
+<div class="flex">
+<section class="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-l-4 border-l-blue-500 dark:border-l-blue-400 border-slate-200/90 dark:border-slate-800 shadow-sm dark:shadow-lg flex flex-col w-full dim-chart" data-purpose="dim-warehouse">
+<div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"></span>
+<h3 class="text-sm font-bold text-slate-900 dark:text-white">Warehouse</h3>
+</div>
+<span class="text-[11px] font-mono text-slate-500 dark:text-slate-400">1,136 / 2,942 CBM</span>
+</div>
+<div class="space-y-2.5">
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="BKD1">BKD1</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:100.0%">
+<div class="h-full bg-emerald-500" style="width:42.8%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:57.2%">
+<div class="dim-bar-glint" style="animation-delay:0ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">620</span><span class="text-slate-400 dark:text-slate-500">/1,450</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="VN831">VN831</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:53.8%">
+<div class="h-full bg-emerald-500" style="width:39.7%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:60.3%">
+<div class="dim-bar-glint" style="animation-delay:70ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">310</span><span class="text-slate-400 dark:text-slate-500">/780</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="VN821">VN821</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:38.6%">
+<div class="h-full bg-emerald-500" style="width:29.5%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:70.5%">
+<div class="dim-bar-glint" style="animation-delay:140ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">165</span><span class="text-slate-400 dark:text-slate-500">/560</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="NKD">NKD</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:10.5%">
+<div class="h-full bg-emerald-500" style="width:27.0%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:73.0%">
+<div class="dim-bar-glint" style="animation-delay:210ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">41</span><span class="text-slate-400 dark:text-slate-500">/152</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<div class="flex">
+<section class="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-l-4 border-l-purple-500 dark:border-l-purple-400 border-slate-200/90 dark:border-slate-800 shadow-sm dark:shadow-lg flex flex-col w-full dim-chart" data-purpose="dim-channel">
+<div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-purple-500 dark:bg-purple-400"></span>
+<h3 class="text-sm font-bold text-slate-900 dark:text-white">Channel</h3>
+</div>
+<span class="text-[11px] font-mono text-slate-500 dark:text-slate-400">1,221 / 3,262 CBM</span>
+</div>
+<div class="space-y-2.5">
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="MT">MT</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:100.0%">
+<div class="h-full bg-emerald-500" style="width:42.0%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:58.0%">
+<div class="dim-bar-glint" style="animation-delay:0ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">705</span><span class="text-slate-400 dark:text-slate-500">/1,680</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="GT">GT</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:58.3%">
+<div class="h-full bg-emerald-500" style="width:34.7%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:65.3%">
+<div class="dim-bar-glint" style="animation-delay:70ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">340</span><span class="text-slate-400 dark:text-slate-500">/980</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="KA">KA</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:25.0%">
+<div class="h-full bg-emerald-500" style="width:31.0%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:69.0%">
+<div class="dim-bar-glint" style="animation-delay:140ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">130</span><span class="text-slate-400 dark:text-slate-500">/420</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="B2B">B2B</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:10.8%">
+<div class="h-full bg-emerald-500" style="width:25.3%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:74.7%">
+<div class="dim-bar-glint" style="animation-delay:210ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">46</span><span class="text-slate-400 dark:text-slate-500">/182</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- ================= END ROW 3 ================= -->
+
+<!-- ================= ROW 4: Area | Customer Top 10 ================= -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
+<div class="flex">
+<section class="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-l-4 border-l-pink-500 dark:border-l-pink-400 border-slate-200/90 dark:border-slate-800 shadow-sm dark:shadow-lg flex flex-col w-full dim-chart" data-purpose="dim-area">
+<div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-pink-500 dark:bg-pink-400"></span>
+<h3 class="text-sm font-bold text-slate-900 dark:text-white">Area</h3>
+</div>
+<span class="text-[11px] font-mono text-slate-500 dark:text-slate-400">1,213 / 3,262 CBM</span>
+</div>
+<div class="space-y-2.5">
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Ha Noi">Ha Noi</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:100.0%">
+<div class="h-full bg-emerald-500" style="width:52.3%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:47.7%">
+<div class="dim-bar-glint" style="animation-delay:0ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">293</span><span class="text-slate-400 dark:text-slate-500">/560</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="North East - North West">North East - North West</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:96.8%">
+<div class="h-full bg-emerald-500" style="width:38.2%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:61.8%">
+<div class="dim-bar-glint" style="animation-delay:70ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">207</span><span class="text-slate-400 dark:text-slate-500">/542</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Ho Chi Minh">Ho Chi Minh</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:78.0%">
+<div class="h-full bg-emerald-500" style="width:26.8%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:73.2%">
+<div class="dim-bar-glint" style="animation-delay:140ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">117</span><span class="text-slate-400 dark:text-slate-500">/437</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="South East">South East</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:65.5%">
+<div class="h-full bg-emerald-500" style="width:48.5%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:51.5%">
+<div class="dim-bar-glint" style="animation-delay:210ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">178</span><span class="text-slate-400 dark:text-slate-500">/367</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="North Central Coast">North Central Coast</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:51.6%">
+<div class="h-full bg-emerald-500" style="width:27.3%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:72.7%">
+<div class="dim-bar-glint" style="animation-delay:280ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">79</span><span class="text-slate-400 dark:text-slate-500">/289</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Mekong 1">Mekong 1</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:38.8%">
+<div class="h-full bg-emerald-500" style="width:41.9%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:58.1%">
+<div class="dim-bar-glint" style="animation-delay:350ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">91</span><span class="text-slate-400 dark:text-slate-500">/217</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Central">Central</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:32.0%">
+<div class="h-full bg-emerald-500" style="width:9.5%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:90.5%">
+<div class="dim-bar-glint" style="animation-delay:420ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">17</span><span class="text-slate-400 dark:text-slate-500">/179</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="South Central Coast">South Central Coast</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:31.4%">
+<div class="h-full bg-emerald-500" style="width:38.1%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:61.9%">
+<div class="dim-bar-glint" style="animation-delay:490ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">67</span><span class="text-slate-400 dark:text-slate-500">/176</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Central Highland">Central Highland</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:30.4%">
+<div class="h-full bg-emerald-500" style="width:8.2%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:91.8%">
+<div class="dim-bar-glint" style="animation-delay:560ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">14</span><span class="text-slate-400 dark:text-slate-500">/170</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Mekong 2">Mekong 2</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:28.9%">
+<div class="h-full bg-emerald-500" style="width:59.3%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:40.7%">
+<div class="dim-bar-glint" style="animation-delay:630ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">96</span><span class="text-slate-400 dark:text-slate-500">/162</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Unclassified">Unclassified</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:28.0%">
+<div class="h-full bg-emerald-500" style="width:30.6%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:69.4%">
+<div class="dim-bar-glint" style="animation-delay:700ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">48</span><span class="text-slate-400 dark:text-slate-500">/157</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="South East - Lam Dong">South East - Lam Dong</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:1.1%">
+<div class="h-full bg-emerald-500" style="width:100.0%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:0.0%">
+<div class="dim-bar-glint" style="animation-delay:770ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">6</span><span class="text-slate-400 dark:text-slate-500">/6</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<div class="flex">
+<section class="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-l-4 border-l-orange-500 dark:border-l-orange-400 border-slate-200/90 dark:border-slate-800 shadow-sm dark:shadow-lg flex flex-col w-full dim-chart" data-purpose="dim-customer">
+<div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-orange-500 dark:bg-orange-400"></span>
+<h3 class="text-sm font-bold text-slate-900 dark:text-white">Customer – Top 10</h3>
+</div>
+<span class="text-[11px] font-mono text-slate-500 dark:text-slate-400">197 / 527 CBM</span>
+</div>
+<div class="space-y-2.5">
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Cong Ty CP San Xuat...">Cong Ty CP San Xuat...</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:100.0%">
+<div class="h-full bg-emerald-500" style="width:44.4%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:55.6%">
+<div class="dim-bar-glint" style="animation-delay:0ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">48</span><span class="text-slate-400 dark:text-slate-500">/108</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Cong Ty CP Son Thanh">Cong Ty CP Son Thanh</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:68.5%">
+<div class="h-full bg-emerald-500" style="width:36.5%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:63.5%">
+<div class="dim-bar-glint" style="animation-delay:70ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">27</span><span class="text-slate-400 dark:text-slate-500">/74</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Cong Ty TNHH Thuong Mai V...">Cong Ty TNHH Thuong Mai V...</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:57.4%">
+<div class="h-full bg-emerald-500" style="width:38.7%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:61.3%">
+<div class="dim-bar-glint" style="animation-delay:140ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">24</span><span class="text-slate-400 dark:text-slate-500">/62</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Cong Ty TNHH Thuong Mai T...">Cong Ty TNHH Thuong Mai T...</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:49.1%">
+<div class="h-full bg-emerald-500" style="width:39.6%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:60.4%">
+<div class="dim-bar-glint" style="animation-delay:210ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">21</span><span class="text-slate-400 dark:text-slate-500">/53</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Cong Ty TNHH MTV TM DV Tu...">Cong Ty TNHH MTV TM DV Tu...</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:48.1%">
+<div class="h-full bg-emerald-500" style="width:100.0%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:0.0%">
+<div class="dim-bar-glint" style="animation-delay:280ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">52</span><span class="text-slate-400 dark:text-slate-500">/52</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Cong Ty TNHH San Xuat va...">Cong Ty TNHH San Xuat va...</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:44.4%">
+<div class="h-full bg-emerald-500" style="width:37.5%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:62.5%">
+<div class="dim-bar-glint" style="animation-delay:350ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">18</span><span class="text-slate-400 dark:text-slate-500">/48</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Cong Ty TNHH An Thinh Tra...">Cong Ty TNHH An Thinh Tra...</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:44.4%">
+<div class="h-full bg-emerald-500" style="width:14.6%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:85.4%">
+<div class="dim-bar-glint" style="animation-delay:420ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">7</span><span class="text-slate-400 dark:text-slate-500">/48</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Cong Ty TNHH MTV SXTMDV V...">Cong Ty TNHH MTV SXTMDV V...</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:29.6%">
+<div class="h-full bg-emerald-500" style="width:0.0%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:100.0%">
+<div class="dim-bar-glint" style="animation-delay:490ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">0</span><span class="text-slate-400 dark:text-slate-500">/32</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Cong Ty TNHH Mot Thanh Vi...">Cong Ty TNHH Mot Thanh Vi...</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:25.9%">
+<div class="h-full bg-emerald-500" style="width:0.0%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:100.0%">
+<div class="dim-bar-glint" style="animation-delay:560ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">0</span><span class="text-slate-400 dark:text-slate-500">/28</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-[132px] shrink-0 text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title="Cong Ty TNHH MTV Lam Dieu">Cong Ty TNHH MTV Lam Dieu</div>
+<div class="flex-1 min-w-0">
+<div class="h-5 flex" style="width:20.4%">
+<div class="h-full bg-emerald-500" style="width:0.0%"></div>
+<div class="h-full bg-slate-200 dark:bg-slate-700 dim-bar-remain" style="width:100.0%">
+<div class="dim-bar-glint" style="animation-delay:630ms"></div>
+</div>
+</div>
+</div>
+<div class="w-[86px] shrink-0 text-right text-[11px] font-mono">
+<span class="font-bold text-slate-900 dark:text-white">0</span><span class="text-slate-400 dark:text-slate-500">/22</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- ================= END ROW 4 ================= -->
+</main>
+<!-- END: MainContentContainer -->
+
+<!-- BEGIN: FooterStatus -->
+<footer class="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0b1017] py-3">
+<div class="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2">
+<div class="flex items-center space-x-3">
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></span> Kafka Stream Connected</span>
+<span>•</span>
+<span>Gateway: Region-APAC-S1</span>
+<span>•</span>
+<span>Latency: 24ms</span>
+</div>
+<div>
+<span class="dark:text-slate-500">E2E Logistics Intelligence Platform • Confidential Internal Operations</span>
+</div>
+</div>
+</footer>
+<!-- END: FooterStatus -->
+
+<!-- (9) Theme toggle — single file, persisted, matches the other e2e-*.html mockups' pattern -->
+<script data-purpose="theme-toggle-script">
+    (function () {
+      var root = document.documentElement;
+      var saved = null;
+      try { saved = localStorage.getItem('e2e-theme'); } catch (e) {}
+      if (saved === 'dark') root.classList.add('dark');
+
+      document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.querySelector('[data-purpose="theme-toggle"]');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          var isDark = root.classList.toggle('dark');
+          try { localStorage.setItem('e2e-theme', isDark ? 'dark' : 'light'); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

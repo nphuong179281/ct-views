@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>% Loose Order — thiết kế lại</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/6.1.0/echarts.min.js"></script>
+<style>
+:root{
+  --paper:#FBFAF7; --surface:#FFFFFF; --surface-2:#F4F2ED;
+  --ink:#1A1D21; --ink-2:#565D65; --ink-3:#8B939B;
+  --rule:#E5E2DB; --rule-2:#D2CEC5;
+  --loose:#BF6A33; --loose-2:#E0A472; --loose-soft:#F3E1D2;
+  --full:#2B6A69; --full-2:#5FA09E; --full-soft:#D6E6E5;
+  --act:#4C7A3C; --act-soft:#DDE9D6;
+  --warn:#AE4E38;
+  --f2:#4F64A6; --f3:#5E8A55; --f4:#94537A; --f4-soft:#F3E3EC;
+}
+html[data-theme="dark"]{
+  --paper:#141619; --surface:#1B1E22; --surface-2:#23272C;
+  --ink:#EDEFF1; --ink-2:#A6AEB6; --ink-3:#717A83;
+  --rule:#2A2F35; --rule-2:#3A4149;
+  --loose:#DD8B4F; --loose-2:#B96E39; --loose-soft:#3A2B1E;
+  --full:#4FA5A2; --full-2:#357C7A; --full-soft:#1C2F2F;
+  --act:#75AC60; --act-soft:#22301C;
+  --warn:#D2725A;
+  --f2:#7B8FCB; --f3:#86B07A; --f4:#C084A4; --f4-soft:#3A2734;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink);
+  font:400 14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased;
+  padding-bottom:64px;
+}
+.wrap{max-width:1360px;margin:0 auto;padding:0 24px}
+
+.topbar{border-bottom:1px solid var(--rule);background:var(--surface);position:sticky;top:0;z-index:20}
+.topbar .wrap{display:flex;align-items:center;gap:18px;height:60px}
+.brand{font-weight:600;font-size:15px;letter-spacing:-.01em;white-space:nowrap}
+.brand span{color:var(--ink-3);font-weight:400}
+.topbar .sep{flex:1}
+.period{font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+.period b{color:var(--ink);font-weight:600}
+.tgl{
+  border:1px solid var(--rule-2);background:transparent;color:var(--ink-2);
+  border-radius:999px;padding:5px 13px;font:500 12px Inter,sans-serif;cursor:pointer;
+}
+.tgl:hover{border-color:var(--ink-3);color:var(--ink)}
+
+.filters{border-bottom:1px solid var(--rule);background:var(--surface-2)}
+.filters .wrap{display:flex;flex-wrap:wrap;gap:8px;padding-top:11px;padding-bottom:11px;align-items:center}
+.fl{
+  display:inline-flex;align-items:baseline;gap:7px;background:var(--surface);
+  border:1px solid var(--rule);border-radius:6px;padding:5px 11px;font-size:12.5px;
+}
+.fl i{font-style:normal;color:var(--ink-3);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.fl b{font-weight:500}
+.fl::after{content:"\25BE";color:var(--ink-3);font-size:10px;margin-left:2px}
+
+section{margin-top:34px}
+.shead{display:flex;align-items:baseline;gap:12px;margin-bottom:13px;flex-wrap:wrap}
+.shead h2{font-size:13px;font-weight:600;letter-spacing:.02em;text-transform:uppercase}
+.shead p{font-size:12.5px;color:var(--ink-2);flex:1;min-width:220px}
+.tag{
+  font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  border-radius:3px;padding:2px 6px;white-space:nowrap;
+}
+.tag.new{background:var(--act-soft);color:var(--act)}
+.tag.keep{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--rule)}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:9px;padding:17px 19px}
+.panel h3{font-size:13px;font-weight:600;margin-bottom:3px}
+.panel .sub{font-size:12px;color:var(--ink-3);margin-bottom:14px;line-height:1.45}
+.grid{display:grid;gap:14px}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g21{grid-template-columns:1.55fr 1fr}
+.g32{grid-template-columns:3fr 2fr}
+.g12{grid-template-columns:1fr 1.4fr}
+
+
+
+.strip{
+  margin-top:14px;display:grid;grid-template-columns:repeat(5,1fr);
+  background:var(--surface);border:1px solid var(--rule);border-radius:9px;
+}
+.scell{
+  padding:14px 16px;border-right:1px solid var(--rule);position:relative;cursor:pointer;
+  transition:transform .15s ease,box-shadow .15s ease;
+}
+.scell:last-child{border-right:0}
+.scell:first-child{border-top-left-radius:9px;border-bottom-left-radius:9px}
+.scell:last-child{border-top-right-radius:9px;border-bottom-right-radius:9px}
+.scell::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
+.scell.c-loose::before{background:var(--loose)}
+.scell.c-full::before{background:var(--full)}
+.scell.c-f2::before{background:var(--f2)}
+.scell.c-f4::before{background:var(--f4)}
+.scell:hover{transform:translateY(-3px);box-shadow:0 8px 18px rgba(0,0,0,.22);z-index:2}
+.scell .k{font-size:11px;color:var(--ink-3);letter-spacing:.03em;text-transform:uppercase}
+.scell .v{font-size:22px;font-weight:600;letter-spacing:-.015em;margin-top:5px}
+.scell .d{font-size:11.5px;color:var(--ink-2);margin-top:3px}
+.scell .d.up{color:var(--loose)}
+.scell .d.dn{color:var(--full)}
+
+.ch{width:100%}
+.h380{height:380px}.h320{height:320px}.h280{height:280px}.h250{height:250px}.h220{height:220px}.h200{height:200px}.h150{height:150px}.h120{height:120px}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{
+  text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--ink-3);padding:0 9px 7px;border-bottom:1px solid var(--rule-2);white-space:nowrap;
+}
+td{padding:8px 9px;border-bottom:1px solid var(--rule);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.r{text-align:right}
+.sku{font-size:11.5px;color:var(--ink-3)}
+.nm{font-weight:500;line-height:1.3}
+.chip{
+  display:inline-block;font-size:10.5px;font-weight:600;border-radius:3px;
+  padding:1px 6px;background:var(--surface-2);color:var(--ink-2);
+}
+.chip.act{background:var(--act-soft);color:var(--act)}
+.chip.loose{background:var(--loose-soft);color:var(--loose)}
+.chip.full{background:var(--full-soft);color:var(--full)}
+.chip.f4{background:var(--f4-soft);color:var(--f4)}
+
+.tt{table-layout:fixed}
+.tt td:first-child,.tt th:first-child{width:42%}
+.tt .nm{overflow-wrap:anywhere}
+.tt tbody tr{cursor:pointer}
+.tt tbody tr:hover{background:var(--surface-2)}
+
+.rowtip{
+  position:fixed;z-index:60;pointer-events:none;max-width:360px;
+  background:var(--surface);border:1px solid var(--rule-2);border-radius:8px;
+  padding:9px 12px;font-size:11.5px;line-height:1.65;color:var(--ink-2);
+  box-shadow:0 10px 24px rgba(0,0,0,.24);opacity:0;transition:opacity .1s ease;
+}
+.rowtip.show{opacity:1}
+.rowtip .rt-title{font-weight:600;color:var(--ink);margin-bottom:5px}
+.rowtip .rt-row{white-space:nowrap}
+.rowtip .rt-more{color:var(--ink-3);font-style:italic}
+.pal{display:flex;gap:2px;align-items:center}
+.pal span{height:11px;width:13px;background:var(--surface-2);border-radius:1.5px;position:relative;overflow:hidden;flex:none}
+.pal span em{position:absolute;top:0;bottom:0;left:0;display:block;background:var(--full)}
+.pal span.part em{background:var(--loose)}
+.pal span.wide{width:88px}
+
+
+.note{
+  margin-top:13px;font-size:12px;color:var(--ink-2);line-height:1.6;
+  border-top:1px solid var(--rule);padding-top:11px;
+}
+.note b{color:var(--ink);font-weight:600}
+.note code{
+  font:500 11.5px ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:var(--surface-2);border-radius:3px;padding:1px 5px;
+}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:11px;font-size:11.5px;color:var(--ink-2)}
+.seg{display:inline-flex;border:1px solid var(--rule-2);border-radius:6px;overflow:hidden}
+.seg button{
+  border:0;background:transparent;color:var(--ink-2);cursor:pointer;
+  font:500 11.5px Inter,sans-serif;padding:5px 11px;
+}
+.seg button+button{border-left:1px solid var(--rule-2)}
+.seg button.on{background:var(--surface-2);color:var(--ink);font-weight:600}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+
+/* thanh tỷ lệ Vì sao lẻ — hover khớp với dòng bảng qua data-g dùng chung */
+.why{display:flex;align-items:flex-end;height:40px;margin-bottom:14px;gap:1px}
+.why div{
+  display:flex;align-items:center;justify-content:center;height:34px;min-width:5px;
+  font-size:11.5px;font-weight:600;color:#fff;white-space:nowrap;cursor:pointer;
+  transition:height .15s ease,filter .15s ease,box-shadow .15s ease;
+}
+.why div:first-child{border-top-left-radius:5px;border-bottom-left-radius:5px}
+.why div:last-child{border-top-right-radius:5px;border-bottom-right-radius:5px}
+.why div.hl{height:40px;filter:brightness(1.14) saturate(1.08);box-shadow:0 4px 10px rgba(0,0,0,.28);position:relative;z-index:2}
+
+.whytable tbody tr{cursor:pointer;transition:background .15s ease,box-shadow .15s ease}
+.whytable tbody tr.hl{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--rc)}
+
+@media(max-width:1080px){
+  .g3,.g2,.g21,.g12,.g32,.hero{grid-template-columns:1fr}
+  .strip{grid-template-columns:repeat(3,1fr)}
+  .scell:nth-child(3n){border-right:0}
+}
+@media(max-width:620px){
+  .wrap{padding:0 14px}
+  .strip{grid-template-columns:repeat(2,1fr)}
+  .hval{font-size:36px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="wrap">
+  <div class="brand">% Loose Order <span>&nbsp;·&nbsp; Mondelez Control Tower</span></div>
+  <div class="sep"></div>
+  <div class="period">Delivery Cycle <b>24 – 31/08/2026</b> &nbsp;·&nbsp; 4 kho</div>
+  <button class="tgl" id="tgl">Tối</button>
+</div></div>
+
+<div class="filters"><div class="wrap">
+  <span class="fl"><i>Kho</i><b>Tất cả (4)</b></span>
+  <span class="fl"><i>Kênh</i><b>Tất cả</b></span>
+  <span class="fl"><i>Nhóm hàng</i><b>Tất cả</b></span>
+  <span class="fl"><i>Vùng</i><b>Tất cả</b></span>
+  <span class="fl"><i>Loại ngày</i><b>Delivery Cycle</b></span>
+  <span class="fl"><i>Khoảng</i><b>24/08 – 31/08/2026</b></span>
+</div></div>
+
+<div class="wrap">
+
+<!-- ========== HAI SỐ CHỦ ========== -->
+<section style="margin-top:22px">
+  <div class="shead">
+    <h2>Kỳ này</h2>
+  </div>
+
+  <div class="strip">
+    <div class="scell c-loose"><div class="k">% CSE lẻ</div><div class="v">61,08%</div><div class="d dn">▼ 1,08 pt</div></div>
+    <div class="scell c-loose"><div class="k">CSE lẻ</div><div class="v">459.736</div><div class="d up">▲ 7,5%</div></div>
+    <div class="scell c-full"><div class="k">CSE chẵn</div><div class="v">292.905</div><div class="d up">▲ 12,5%</div></div>
+    <div class="scell c-f2"><div class="k">Tổng CSE</div><div class="v">752.641</div><div class="d up">▲ 9,4%</div></div>
+    <div class="scell c-f4"><div class="k">SKU chạm</div><div class="v">388</div><div class="d">387 SKU có lẻ</div></div>
+  </div>
+</section>
+
+<!-- ========== TẢI THEO NGÀY + NHỊP TUẦN ========== -->
+<section>
+  <div class="shead">
+    <h2>Tải của kho</h2>
+    <p>Mục tiêu gốc của view: biết ngày nào cần thêm người soạn hàng.</p>
+  </div>
+  <div class="panel">
+    <h3>Theo ngày <span class="tag keep" style="margin-left:6px">giữ · thêm trục % CSE lẻ</span></h3>
+    <div class="sub">Cột = CSE chẵn / lẻ. Đường = % CSE lẻ. Kỳ 7 ngày Delivery Cycle — Chủ Nhật 30/08 không có đơn.</div>
+    <div class="ch h250" id="c_trend"></div>
+  </div>
+
+  <div class="panel" style="margin-top:14px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <h3>Một ngày nặng là vì đâu <span class="tag new" style="margin-left:6px">mới</span></h3>
+      <div style="flex:1"></div>
+      <div class="seg" id="seg_sort">
+        <button data-k="ngay" class="on">Xếp theo ngày</button><button data-k="le">Xếp theo CSE lẻ</button>
+      </div>
+    </div>
+    <div class="sub">
+      CSE lẻ ở dải trên cùng, bổ ra ba cách nhìn khác nhau của cùng khối lượng đó ở ba dải dưới:
+      số đơn · số dòng mỗi đơn · số thùng mỗi dòng. Đường đứt là mức trung bình của kỳ.
+      <b>Bấm "Xếp theo CSE lẻ"</b> để dải trên thành bậc thang giảm dần — dải nào bên dưới đi theo bậc thang đó
+      chính là yếu tố đang chi phối; dải nào giữ nguyên hình răng cưa thì không liên quan.
+    </div>
+    <div class="ch h380" id="c_chain"></div>
+  </div>
+</section>
+
+<!-- ========== KHUNG CŨ: KHO / KÊNH / NHÓM HÀNG ========== -->
+<section>
+  <div class="shead">
+    <h2>Cắt theo chiều</h2>
+    <p>Ba chart của bản hiện tại, giữ nguyên định nghĩa — chỉ bổ sung cột CSE mỗi dòng để lộ cỡ đơn.</p>
+    <span class="tag keep">giữ</span>
+  </div>
+  <div class="grid g3">
+    <div class="panel">
+      <h3>Theo kho</h3>
+      <div class="sub">VN831 chỉ 33,6% lẻ vì đơn lớn — 48,6 CSE mỗi dòng, gấp 4,9 lần NKD.</div>
+      <div class="ch h220" id="c_wh"></div>
+    </div>
+    <div class="panel">
+      <h3>Theo kênh bán hàng</h3>
+      <div class="sub">Cùng dạng với hai chart bên cạnh. Đơn càng nhỏ, % lẻ càng cao — MT 5,3 CSE mỗi dòng thì 77,4% lẻ, B2B 55,8 thì chỉ 12,4%.</div>
+      <div class="ch h220" id="c_kenh"></div>
+    </div>
+    <div class="panel">
+      <h3>Theo nhóm hàng</h3>
+      <div class="sub">FRESH 85,6% lẻ với 7,4 CSE mỗi dòng. MOONCAKE gần bằng DRY về khối lượng lẻ.</div>
+      <div class="ch h220" id="c_cargo"></div>
+    </div>
+  </div>
+  <div class="note">
+    <b>MT chiếm 7.599 / 11.149 đơn (68%) nhưng chỉ 14% khối lượng</b> — 5,3 CSE mỗi dòng, 77,4% lẻ.
+    Công việc của kho nằm ở đây, còn khối lượng hàng nằm ở GT (74% CSE, 17,3 CSE mỗi dòng).
+    Hai kênh này cần hai cách xử lý khác nhau và hiện đang bị gộp vào một con số.
+  </div>
+</section>
+
+<!-- ========== TẦNG VÌ SAO ========== -->
+<section>
+  <div class="shead">
+    <h2>Vì sao lẻ</h2>
+    <p>Bổ 459.736 CSE lẻ ở trên theo khoảng cách tới ranh giới pallet gần nhất.</p>
+    <span class="tag new">mới</span>
+  </div>
+
+  <div class="grid g32">
+    <div class="panel">
+      <h3>CSE lẻ theo khoảng cách tới ranh giới pallet</h3>
+      <div class="sub">
+        Mỗi dòng đơn × SKU × lô so với sức chứa 1 pallet của chính SKU đó — A/C/D đo khoảng cách tới ranh giới gần nhất.
+        Riêng B lẻ vì bị tách lô, gộp lô lại là chẵn. Trỏ vào thanh hoặc dòng bảng để đối chiếu.
+      </div>
+      <div class="why" id="whybar"></div>
+      <table class="whytable">
+        <thead><tr><th>Nhóm</th><th class="r">Dòng</th><th class="r">CSE lẻ</th><th class="r">% tổng lẻ</th></tr></thead>
+        <tbody id="why_tbl"></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>Phân bố cỡ đơn <span class="tag new" style="margin-left:6px">mới</span></h3>
+      <div class="sub">Mỗi dòng đặt bao nhiêu phần của một pallet. Hai chuỗi cắt nhau ở bậc "50–99%" — đó là ranh giới giữa công và hàng.</div>
+      <div class="ch h250" id="c_size"></div>
+      <div class="legend">
+        <span><i style="background:var(--loose)"></i>% số dòng soạn hàng (công)</span>
+        <span><i style="background:var(--full)"></i>% khối lượng CSE (hàng)</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== ĐUÔI SỬA ĐƯỢC ========== -->
+<section>
+  <div class="shead">
+    <h2>Đuôi sửa được</h2>
+    <p>3,5% tổng lẻ — nhỏ, nhưng là phần duy nhất có hành động cụ thể và người chịu trách nhiệm rõ ràng.</p>
+    <span class="tag new">mới</span>
+  </div>
+  <div class="panel">
+    <h3>Suýt chẵn — nhích lượng đặt là xoá được</h3>
+    <div class="sub">Chỉ còn hụt ≤10% một pallet là tròn — dù đang ở pallet đầu tiên hay pallet tiếp theo. Trỏ vào một dòng để xem từng đơn.</div>
+    <table class="tt">
+      <thead><tr><th>Mặt hàng</th><th>Kho · Kênh</th><th class="r">Xoá được</th><th class="r">Giao dư</th><th class="r">Đòn bẩy</th></tr></thead>
+      <tbody id="t_tail"></tbody>
+    </table>
+  </div>
+</section>
+<div class="rowtip" id="rowtip"></div>
+
+<!-- ========== TOP SKU ========== -->
+<section>
+  <div class="shead">
+    <h2>Top SKU theo CSE lẻ</h2>
+    <p>Giữ bảng cũ, thêm hai cột đọc được ngay: sức chứa pallet và cỡ đơn trung bình.</p>
+    <span class="tag keep">giữ · thêm 2 cột</span>
+  </div>
+  <div class="panel">
+    <div class="sub">Cột cuối: mỗi ô là một pallet, ô cam là phần lẻ.</div>
+    <table>
+      <thead><tr>
+        <th>SKU</th><th>Tên hàng</th><th class="r">CSE lẻ</th><th class="r">CSE chẵn</th>
+        <th class="r">% lẻ</th><th class="r">Dòng</th><th class="r">CSE/dòng</th><th class="r">CSE/PL</th>
+        <th style="width:120px">Cỡ đơn TB so với pallet</th>
+      </tr></thead>
+      <tbody id="t_sku"></tbody>
+    </table>
+  </div>
+</section>
+
+
+</div>
+
+<script>
+var D = {
+  /* Kỳ 24–31/08/2026 · 7 ngày Delivery Cycle · 4 kho — đo ngày 15/09/2026 */
+  /* [ngày, thứ, dòng, đơn, CSE lẻ, CSE chẵn] */
+  days: [["24/08",1,8302,2085,64860,32107],["25/08",2,10211,2967,69053,51590],["26/08",3,10894,2515,78616,48232],
+         ["27/08",4,5695,929,57264,44497],["28/08",5,7982,868,77084,44486],["29/08",6,5097,995,50406,37962],
+         ["31/08",1,6265,790,62454,34031]],
+  /* [kho, chẵn, lẻ, pallet, dòng, đơn, %lẻ, CSE mỗi dòng] */
+  wh: [["BKD1",90003,211680,2437,25111,4382,70.17,12.0],["NKD",74108,148578,1593,22519,6140,66.72,9.9],
+       ["VN821",53747,61545,1201,4490,372,53.38,25.7],["VN831",75047,37933,1354,2326,255,33.57,48.6]],
+  /* [kênh, chẵn, lẻ, dòng, đơn, %lẻ, CSE mỗi dòng] */
+  kenh: [["GT",211002,348127,32402,3214,62.26,17.3],["MT",23852,81713,20103,7599,77.41,5.3],
+         ["KA",51014,28901,1797,292,36.16,44.5],["B2B",7037,995,144,44,12.38,55.8]],
+  /* [nhóm hàng, chẵn, lẻ, dòng, %lẻ, CSE mỗi dòng] */
+  cargo: [["DRY",135062,182024,27148,57.41,11.7],["MOONCAKE",122057,177633,12058,59.27,24.9],
+          ["FRESH",13645,81038,12728,85.59,7.4],["POSM/OFFBOM",10069,17205,2209,63.08,12.3],
+          ["Chưa phân loại",12072,1836,303,13.20,45.9]],
+  /* [bậc cỡ đơn, dòng, CSE, trung vị] */
+  size: [["<5% PL",19278,26198,1],["5–25%",18897,121262,5],["25–50%",6915,115103,12],
+         ["50–99%",4517,141396,24],["1–2 PL",2314,142706,48],["≥2 PL",1307,205976,120]],
+  /* Đo lại 18/09 ở grain đơn×SKU×batch (khớp grain của rc_loose_picking); B dùng gộp lô riêng để phát hiện. */
+  why: [
+    {g:"A", ten:"Dưới 10% pallet",           dong:26987, cse:57983,  pct:12.6, mau:"--loose-2", chip:"loose"},
+    {g:"B", ten:"Khớp khi gộp lô",           dong:268,   cse:6170,   pct:1.3,  mau:"--full",    chip:"full"},
+    {g:"C", ten:"Dư 10% pallet",             dong:271,   cse:738,    pct:0.2,  mau:"--act",     chip:"act"},
+    {g:"D", ten:"Thêm 10% pallet sẽ đủ",     dong:344,   cse:16100,  pct:3.5,  mau:"--f4",      chip:"f4"},
+    {g:"E", ten:"Còn lại",                   dong:26576, cse:378745, pct:82.4, mau:"--loose",   chip:"loose"}
+  ],
+  /* nhóm D (Vì sao lẻ) — mọi đơn hụt ≤10% một pallet, dù đang ở pallet nào; ct = chi tiết từng đơn cho tooltip */
+  tail: [
+    {sku:"4304161",ten:"KD BMT TRON XE NHAN BO 70GR X 50G",kho:"NKD",kenh:"GT",don:23,P:25,xoa:538,giao:37,db:14.5,ct:["8482637565|2026-08-27|23|2","8482640698|2026-08-31|23|2","8482638665|2026-08-28|24|1","8482631375|2026-08-24|23|2","8482638664|2026-08-28|23|2","8482638674|2026-08-28|24|1","8482640004|2026-08-29|24|1","8482639934|2026-08-29|24|1","8482631808|2026-08-25|23|2","8482635155|2026-08-25|23|2","8482639984|2026-08-29|24|1","8482636224|2026-08-26|23|2","8482638770|2026-08-28|23|2","8482640753|2026-08-31|23|2","8482637551|2026-08-27|23|2","8482631840|2026-08-25|23|2","8482631828|2026-08-25|24|1","8482630123|2026-08-24|23|2","8482636115|2026-08-26|23|2","8482640820|2026-08-31|24|1","8482641800|2026-08-31|24|1","8482631827|2026-08-25|24|1","8482629862|2026-08-24|23|2"]},
+    {sku:"4231112",ten:"95_BTT DEO HAT SEN 0 TRUNG 180G",kho:"BKD1",kenh:"GT",don:6,P:80,xoa:453,giao:27,db:16.8,ct:["8482637226|2026-08-26|75|5","8482637407|2026-08-27|159|1","8482632038|2026-08-25|236|4","8482629542|2026-08-24|154|6","8482638531|2026-08-28|75|5","8482637863|2026-08-28|154|6"]},
+    {sku:"4303934",ten:"KD SW CHA BONG 50GR X 80G",kho:"NKD",kenh:"GT",don:10,P:42,xoa:399,giao:21,db:19.0,ct:["8482640702|2026-08-31|40|2","8482635987|2026-08-26|40|2","8482640700|2026-08-31|41|1","8482638608|2026-08-28|40|2","8482638658|2026-08-28|39|3","8482639878|2026-08-29|40|2","8482640704|2026-08-31|40|2","8482631801|2026-08-25|40|2","8482638604|2026-08-28|40|2","8482637555|2026-08-27|39|3"]},
+    {sku:"4263667",ten:"S5_BTT DEO HAT SEN 0 TRUNG 150G",kho:"NKD",kenh:"GT",don:5,P:80,xoa:371,giao:29,db:12.8,ct:["8482638287|2026-08-27|473|7","8482638290|2026-08-27|155|5","8482635250|2026-08-26|234|6","8482638231|2026-08-27|76|4","8482639193|2026-08-28|73|7"]},
+    {sku:"4231123",ten:"31_Thap cam jambon 1 trung 150g",kho:"VN821",kenh:"GT",don:4,P:80,xoa:297,giao:23,db:12.9,ct:["8482629586|2026-08-24|73|7","8482638199|2026-08-27|75|5","8482632942|2026-08-25|77|3","8482636249|2026-08-26|72|8"]},
+    {sku:"4231256",ten:"98_BTT DEO THAP CAM 0 TRUNG 180G",kho:"NKD",kenh:"GT",don:4,P:80,xoa:295,giao:25,db:11.8,ct:["8482640165|2026-08-29|73|7","8482631528|2026-08-24|152|8","8482640163|2026-08-29|72|8","8482640007|2026-08-29|78|2"]},
+    {sku:"4303940",ten:"KD BMT O DAI SOCOLA 80GR X 50G",kho:"BKD1",kenh:"GT",don:10,P:25,xoa:236,giao:14,db:16.9,ct:["8482640842|2026-08-31|23|2","8482638566|2026-08-28|23|2","8482638583|2026-08-28|49|1","8482636016|2026-08-26|23|2","8482638574|2026-08-28|24|1","8482635954|2026-08-26|24|1","8482635951|2026-08-26|23|2","8482631962|2026-08-25|24|1","8482638501|2026-08-28|24|1","8482636006|2026-08-26|24|1"]},
+    {sku:"4231355",ten:"60_BTT DAU XANH 0 TRUNG 150G",kho:"NKD",kenh:"GT",don:3,P:80,xoa:235,giao:5,db:47.0,ct:["8482640680|2026-08-31|159|1","8482640185|2026-08-29|79|1","8482635119|2026-08-25|157|3"]}
+  ],
+  /* [sku, tên, lẻ, chẵn, %lẻ, dòng, CSE mỗi dòng, CSE/pallet] */
+  sku: [["4329627","OREO VANILLA ACTIVATION 24X61.25G C2",10525,2156,83.0,325,39.0,224],
+        ["4326368","OREO VANILLA 24X105G C2",8367,2400,77.71,264,40.8,160],
+        ["4231113","96_BTT DEO DAU XANH 0 TRUNG 180G",8099,15040,35.0,312,74.2,80],
+        ["4231112","95_BTT DEO HAT SEN 0 TRUNG 180G",7634,8560,47.14,294,55.1,80],
+        ["4326401","OREO CHOCO 24X105G C2",7572,322,95.92,624,12.7,161],
+        ["4326400","OREO CHOCOLATE 24X 61.25G",7085,0,100.0,315,22.5,224],
+        ["4231124","41_BTT THAP CAM LAP XUONG 1 TRUNG 150G",6941,8240,45.72,354,42.9,80],
+        ["4231122","21_BTT GA QUAY JAMBON 1 TRUNG 150G",6778,4480,60.21,295,38.2,80],
+        ["4231102","M1_BTT KHOAI MON 1 TRUNG 150G",6771,3520,65.8,306,33.6,80],
+        ["4303940","KD BMT O DAI SOCOLA 80GR X 50G",6591,1475,81.71,851,9.5,25],
+        ["4306428","COSY QUE TC 117.6GX24(DAUXOAIDUACHO)",6583,18414,26.34,381,65.6,66],
+        ["4319686","KD BMT CHA BONG 70GR X 40G",6238,300,95.41,824,7.9,30]]
+};
+
+var THU = {1:"Hai",2:"Ba",3:"Tư",4:"Năm",5:"Sáu",6:"Bảy"};
+var TUAN = {31:"27/07",32:"03/08",33:"10/08",34:"17/08",35:"24/08",36:"31/08"};
+
+
+function cv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function fmt(n){return n.toLocaleString("vi-VN")}
+function dec(n,d){return n.toFixed(d===undefined?2:d).replace(".",",")}
+function pct(n,d){return dec(n,d===undefined?2:d)+"%"}
+var charts = {};
+var chainSort = "ngay";
+
+function mk(id, opt){
+  var el = document.getElementById(id);
+  if(charts[id]) charts[id].dispose();
+  charts[id] = echarts.init(el, null, {renderer:"svg"});
+  charts[id].setOption(opt);
+}
+
+function base(){
+  return {
+    textStyle:{fontFamily:"Inter,sans-serif", color:cv("--ink-2")},
+    tooltip:{
+      backgroundColor:cv("--surface"), borderColor:cv("--rule-2"), borderWidth:1,
+      textStyle:{color:cv("--ink"), fontSize:12}, extraCssText:"box-shadow:0 4px 16px rgba(0,0,0,.10);border-radius:7px"
+    },
+    grid:{left:6,right:6,top:22,bottom:4,containLabel:true}
+  };
+}
+function axLine(){return {lineStyle:{color:cv("--rule-2")}}}
+function axLabel(s){return Object.assign({color:cv("--ink-3"), fontSize:10.5}, s||{})}
+function splitLine(){return {lineStyle:{color:cv("--rule"), type:"dashed"}}}
+
+var veChain = function(){};
+function build(){
+  var L = cv("--loose"), F = cv("--full"), L2 = cv("--loose-2"), A = cv("--act"), I3 = cv("--ink-3");
+
+  // --- tải theo ngày ---
+  var o = base();
+  var pctLe = D.days.map(function(r){ return r[4]*100/(r[4]+r[5]) });
+  mk("c_trend", Object.assign(o, {
+    legend:{data:["CSE chẵn","CSE lẻ","% CSE lẻ"], top:0, right:0, itemWidth:9, itemHeight:9,
+            textStyle:{color:cv("--ink-2"), fontSize:11}, icon:"roundRect"},
+    tooltip:Object.assign(o.tooltip,{trigger:"axis", axisPointer:{type:"shadow"},
+      formatter:function(p){
+        var d = p[0].axisValue, s = "<b>"+d+"</b>";
+        p.forEach(function(x){ s += "<br>"+x.marker+" "+x.seriesName+": <b>"+(x.seriesName==="% CSE lẻ"?dec(x.value,1)+"%":fmt(x.value))+"</b>" });
+        return s;
+      }}),
+    xAxis:{type:"category", data:D.days.map(function(r){return r[0]}),
+           axisLine:axLine(), axisTick:{show:false}, axisLabel:axLabel()},
+    yAxis:[
+      {type:"value", name:"CSE", nameTextStyle:{color:I3,fontSize:10}, axisLabel:axLabel({formatter:function(v){return dec(v/1000, v%1000?1:0)+"k"}}), splitLine:splitLine()},
+      {type:"value", min:0, max:100, axisLabel:axLabel({formatter:"{value}%"}), splitLine:{show:false}}
+    ],
+    series:[
+      {name:"CSE chẵn", type:"bar", stack:"c", data:D.days.map(function(r){return r[5]}), itemStyle:{color:F}, barMaxWidth:46},
+      {name:"CSE lẻ", type:"bar", stack:"c", data:D.days.map(function(r){return r[4]}), itemStyle:{color:L}, barMaxWidth:46},
+      {name:"% CSE lẻ", type:"line", yAxisIndex:1, data:pctLe,
+       smooth:false, symbol:"circle", symbolSize:5, lineStyle:{color:cv("--f2"), width:1.8}, itemStyle:{color:cv("--f2")}}
+    ]
+  }));
+
+
+  // --- chuỗi nhân: kết quả + ba yếu tố, bốn dải chung một trục ngày ---
+  // Mỗi dải một màu riêng. Nút "Xếp theo CSE lẻ" bẻ thứ tự ngày để người xem TỰ thấy
+  // yếu tố nào đi theo kết quả — không cần đọc kết luận viết sẵn.
+  var FACT = [
+    {ten:"CSE lẻ",            lay:function(r){return r[4]},      tb:459736/7,     mau:"--loose", kq:1},
+    {ten:"Số đơn",            lay:function(r){return r[3]},      tb:11149/7,      mau:"--f2"},
+    {ten:"Dòng mỗi đơn",      lay:function(r){return r[2]/r[3]}, tb:54446/11149,  mau:"--f3"},
+    {ten:"Thùng lẻ mỗi dòng", lay:function(r){return r[4]/r[2]}, tb:459736/54446, mau:"--f4"}
+  ];
+  var TOP = [4, 27, 50, 73], HI = 16;   // % chiều cao mỗi dải
+
+  veChain = function(){
+    var rows = D.days.slice();
+    if(chainSort === "le") rows.sort(function(a,b){ return b[4] - a[4] });
+    var oc = base();
+    mk("c_chain", {
+      textStyle:oc.textStyle,
+      tooltip:Object.assign(oc.tooltip,{trigger:"axis", axisPointer:{type:"line"},
+        formatter:function(p){
+          var r = rows[p[0].dataIndex];
+          return "<b>"+r[0]+"</b> · thứ "+THU[r[1]]+
+            "<br>Số đơn: <b>"+fmt(r[3])+"</b>"+
+            "<br>× Dòng mỗi đơn: <b>"+dec(r[2]/r[3],2)+"</b>"+
+            "<br>× Thùng lẻ mỗi dòng: <b>"+dec(r[4]/r[2],2)+"</b>"+
+            "<br>= CSE lẻ: <b>"+fmt(r[4])+"</b>";
+        }}),
+      axisPointer:{link:[{xAxisIndex:"all"}], lineStyle:{color:cv("--rule-2")}},
+      grid: FACT.map(function(_, k){ return {left:4, right:14, top:TOP[k]+"%", height:HI+"%", containLabel:true} }),
+      xAxis: FACT.map(function(_, k){
+        return {gridIndex:k, type:"category", data:rows.map(function(r){return r[0]}),
+                axisTick:{show:false}, axisLine:{lineStyle:{color:cv("--rule")}},
+                axisLabel: k===3 ? axLabel({fontSize:10}) : {show:false}};
+      }),
+      yAxis: FACT.map(function(f, k){
+        return {gridIndex:k, type:"value", name:f.ten, nameLocation:"end", nameGap:7, min:0, splitNumber:2,
+                nameTextStyle:{color:cv(f.mau), fontSize:10.5, fontWeight:600, align:"left"},
+                splitLine:{show:false}, axisLine:{show:false}, axisTick:{show:false},
+                axisLabel:axLabel({fontSize:9, showMinLabel:false,
+                  formatter:function(v){ return v >= 1000 ? dec(v/1000, v%1000?1:0)+"k" : dec(v,0) }})};
+      }),
+      series: FACT.map(function(f, k){
+        return {name:f.ten, type:"bar", xAxisIndex:k, yAxisIndex:k, barMaxWidth:34,
+                data:rows.map(f.lay),
+                itemStyle:{color:cv(f.mau), opacity:f.kq ? .95 : .78, borderRadius:[2,2,0,0]},
+                markLine:{silent:true, symbol:"none",
+                  lineStyle:{color:cv(f.mau), type:"dashed", width:1, opacity:.9},
+                  label:{show:true, position:"insideEndTop", color:cv("--ink-3"), fontSize:9.5,
+                         formatter: f.tb >= 1000 ? fmt(Math.round(f.tb)) : dec(f.tb,2)},
+                  data:[{yAxis:f.tb}]}};
+      })
+    });
+  };
+  veChain();
+
+  // --- theo kho ---
+  var o3 = base();
+  mk("c_wh", Object.assign(o3, {
+    grid:{left:6,right:52,top:8,bottom:2,containLabel:true},
+    tooltip:Object.assign(o3.tooltip,{trigger:"axis", axisPointer:{type:"shadow"},
+      formatter:function(p){
+        var i = D.wh.findIndex(function(r){return r[0]===p[0].axisValue});
+        var r = D.wh[i];
+        return "<b>"+r[0]+"</b><br>CSE chẵn: <b>"+fmt(r[1])+"</b><br>CSE lẻ: <b>"+fmt(r[2])+"</b><br>% lẻ: <b>"+pct(r[6])+"</b>"+
+               "<br>Dòng soạn hàng: <b>"+fmt(r[4])+"</b><br>Đơn: <b>"+fmt(r[5])+"</b><br>CSE mỗi dòng: <b>"+dec(r[7],1)+"</b>";
+      }}),
+    xAxis:{type:"value", axisLabel:axLabel({formatter:function(v){return dec(v/1000, v%1000?1:0)+"k"}}), splitLine:splitLine(), axisLine:{show:false}},
+    yAxis:{type:"category", data:D.wh.map(function(r){return r[0]}), inverse:true,
+           axisLine:axLine(), axisTick:{show:false}, axisLabel:axLabel({fontSize:11.5, color:cv("--ink-2")})},
+    series:[
+      {name:"CSE chẵn", type:"bar", stack:"w", data:D.wh.map(function(r){return r[1]}), itemStyle:{color:F}, barMaxWidth:26},
+      {name:"CSE lẻ", type:"bar", stack:"w", data:D.wh.map(function(r){return r[2]}), itemStyle:{color:L}, barMaxWidth:26,
+       label:{show:true, position:"right", color:cv("--ink"), fontSize:11, fontWeight:600,
+              formatter:function(p){return pct(D.wh[p.dataIndex][6])}}}
+    ]
+  }));
+
+  // --- theo kênh (cùng dạng với Theo kho / Theo nhóm hàng) ---
+  var o4 = base();
+  mk("c_kenh", Object.assign(o4, {
+    grid:{left:6,right:52,top:8,bottom:2,containLabel:true},
+    tooltip:Object.assign(o4.tooltip,{trigger:"axis", axisPointer:{type:"shadow"},
+      formatter:function(p){
+        var r = D.kenh.find(function(x){return x[0]===p[0].axisValue});
+        return "<b>"+r[0]+"</b><br>CSE chẵn: <b>"+fmt(r[1])+"</b><br>CSE lẻ: <b>"+fmt(r[2])+"</b>"+
+               "<br>% lẻ: <b>"+pct(r[5])+"</b><br>Dòng soạn hàng: <b>"+fmt(r[3])+"</b>"+
+               "<br>Đơn: <b>"+fmt(r[4])+"</b><br>CSE mỗi dòng: <b>"+dec(r[6],1)+"</b>";
+      }}),
+    xAxis:{type:"value", axisLabel:axLabel({formatter:function(v){return dec(v/1000, v%1000?1:0)+"k"}}),
+           splitLine:splitLine(), axisLine:{show:false}},
+    yAxis:{type:"category", data:D.kenh.map(function(r){return r[0]}), inverse:true,
+           axisLine:axLine(), axisTick:{show:false}, axisLabel:axLabel({fontSize:11.5, color:cv("--ink-2")})},
+    series:[
+      {name:"CSE chẵn", type:"bar", stack:"k", data:D.kenh.map(function(r){return r[1]}),
+       itemStyle:{color:F}, barMaxWidth:24},
+      {name:"CSE lẻ", type:"bar", stack:"k", data:D.kenh.map(function(r){return r[2]}),
+       itemStyle:{color:L}, barMaxWidth:24,
+       label:{show:true, position:"right", color:cv("--ink"), fontSize:11, fontWeight:600,
+              formatter:function(p){return pct(D.kenh[p.dataIndex][5])}}}
+    ]
+  }));
+
+  // --- theo nhóm hàng ---
+  var o5 = base();
+  mk("c_cargo", Object.assign(o5, {
+    grid:{left:6,right:52,top:8,bottom:2,containLabel:true},
+    tooltip:Object.assign(o5.tooltip,{trigger:"axis", axisPointer:{type:"shadow"},
+      formatter:function(p){
+        var r = D.cargo.find(function(x){return x[0]===p[0].axisValue});
+        return "<b>"+r[0]+"</b><br>CSE chẵn: <b>"+fmt(r[1])+"</b><br>CSE lẻ: <b>"+fmt(r[2])+"</b><br>% lẻ: <b>"+pct(r[4])+"</b>"+
+               "<br>Dòng soạn hàng: <b>"+fmt(r[3])+"</b><br>CSE mỗi dòng: <b>"+dec(r[5],1)+"</b>";
+      }}),
+    xAxis:{type:"value", axisLabel:axLabel({formatter:function(v){return dec(v/1000, v%1000?1:0)+"k"}}), splitLine:splitLine(), axisLine:{show:false}},
+    yAxis:{type:"category", data:D.cargo.map(function(r){return r[0]}), inverse:true,
+           axisLine:axLine(), axisTick:{show:false}, axisLabel:axLabel({fontSize:11})},
+    series:[
+      {name:"CSE chẵn", type:"bar", stack:"g", data:D.cargo.map(function(r){return r[1]}), itemStyle:{color:F}, barMaxWidth:22},
+      {name:"CSE lẻ", type:"bar", stack:"g", data:D.cargo.map(function(r){return r[2]}), itemStyle:{color:L}, barMaxWidth:22,
+       label:{show:true, position:"right", color:cv("--ink"), fontSize:11, fontWeight:600,
+              formatter:function(p){return pct(D.cargo[p.dataIndex][4])}}}
+    ]
+  }));
+
+  // --- phân bố cỡ đơn ---
+  var totD = 53228, totC = 752641;   /* kỳ 7 ngày: dòng ở grain đơn×SKU, và tổng CSE */
+  var o6 = base();
+  mk("c_size", Object.assign(o6, {
+    grid:{left:6,right:10,top:14,bottom:4,containLabel:true},
+    tooltip:Object.assign(o6.tooltip,{trigger:"axis", axisPointer:{type:"shadow"},
+      formatter:function(p){
+        var r = D.size[p[0].dataIndex];
+        return "<b>"+r[0]+" của một pallet</b><br>Dòng soạn: <b>"+fmt(r[1])+"</b> ("+pct(r[1]*100/totD,1)+")<br>Khối lượng: <b>"+fmt(r[2])+"</b> CSE ("+pct(r[2]*100/totC,1)+")<br>Trung vị: <b>"+r[3]+"</b> thùng mỗi dòng";
+      }}),
+    xAxis:{type:"category", data:D.size.map(function(r){return r[0]}),
+           axisLine:axLine(), axisTick:{show:false}, axisLabel:axLabel({fontSize:10})},
+    yAxis:{type:"value", axisLabel:axLabel({formatter:"{value}%"}), splitLine:splitLine(), axisLine:{show:false}},
+    series:[
+      {name:"% dòng", type:"bar", data:D.size.map(function(r){return +(r[1]*100/totD).toFixed(1)}),
+       itemStyle:{color:L, borderRadius:[3,3,0,0]}, barMaxWidth:26},
+      {name:"% CSE", type:"bar", data:D.size.map(function(r){return +(r[2]*100/totC).toFixed(1)}),
+       itemStyle:{color:F, borderRadius:[3,3,0,0]}, barMaxWidth:26}
+    ]
+  }));
+
+}
+
+function tables(){
+  document.getElementById("whybar").innerHTML = D.why.map(function(r){
+    return '<div data-g="'+r.g+'" style="width:'+r.pct+'%;background:var('+r.mau+')" title="'+r.g+' — '+r.ten+'">'
+         + (r.pct>=5?dec(r.pct,1)+"%":"") + '</div>';
+  }).join("");
+  document.getElementById("why_tbl").innerHTML = D.why.map(function(r){
+    return "<tr data-g='"+r.g+"' style='--rc:var("+r.mau+")'>"
+         + "<td><span class='chip "+r.chip+"'>"+r.g+"</span> &nbsp;"+r.ten+"</td>"
+         + "<td class='r'>"+fmt(r.dong)+"</td>"
+         + "<td class='r'><b>"+fmt(r.cse)+"</b></td>"
+         + "<td class='r'><b>"+dec(r.pct,1)+"%</b></td></tr>";
+  }).join("");
+  // hover khớp giữa thanh tỷ lệ và dòng bảng qua data-g dùng chung
+  var whyEls = document.querySelectorAll('#whybar [data-g], #why_tbl tr[data-g]');
+  whyEls.forEach(function(el){
+    el.addEventListener('mouseenter', function(){
+      whyEls.forEach(function(x){ x.classList.toggle('hl', x.dataset.g === el.dataset.g) });
+    });
+    el.addEventListener('mouseleave', function(){
+      whyEls.forEach(function(x){ x.classList.remove('hl') });
+    });
+  });
+
+  document.getElementById("t_tail").innerHTML = D.tail.map(function(r,i){
+    return "<tr data-tip='tail' data-i='"+i+"'><td><div class='nm'>"+r.ten+"</div><div class='sku'>"+r.sku+" &nbsp;·&nbsp; "+r.P+" CSE/pallet &nbsp;·&nbsp; "+r.don+" đơn</div></td>"+
+      "<td style='white-space:nowrap'>"+r.kho+" · "+r.kenh+"</td>"+
+      "<td class='r'><b>"+fmt(r.xoa)+"</b></td><td class='r'>"+fmt(r.giao)+"</td>"+
+      "<td class='r'><span class='chip act'>"+dec(r.db,1)+"×</span></td></tr>";
+  }).join("");
+
+  // tooltip theo dong: parse "SO|ngay|tong|can_them" tu D.tail[i].ct
+  (function(){
+    var tip = document.getElementById("rowtip");
+    function ddmm(iso){ return iso.slice(8,10)+"/"+iso.slice(5,7) }
+    function lineTail(s){
+      var p = s.split("|");
+      return "<div class='rt-row'>"+p[0]+" · "+ddmm(p[1])+" · "+fmt(+p[2])+" CSE → cần thêm <b>"+fmt(+p[3])+"</b></div>";
+    }
+    var MAXROW = 10;
+    document.querySelectorAll("#t_tail tr[data-tip]").forEach(function(tr){
+      tr.addEventListener("mouseenter", function(e){
+        var r = D.tail[+tr.dataset.i];
+        var lines = r.ct.map(lineTail);
+        var extra = lines.length > MAXROW ? "<div class='rt-more'>+ "+(lines.length-MAXROW)+" đơn khác</div>" : "";
+        tip.innerHTML = "<div class='rt-title'>"+r.sku+" · "+r.don+" đơn</div>"+lines.slice(0,MAXROW).join("")+extra;
+        tip.classList.add("show");
+      });
+      tr.addEventListener("mousemove", function(e){
+        var x = e.clientX + 16, y = e.clientY + 14;
+        var w = tip.offsetWidth || 300, h = tip.offsetHeight || 100;
+        if(x + w > window.innerWidth - 8) x = e.clientX - w - 16;
+        if(y + h > window.innerHeight - 8) y = e.clientY - h - 14;
+        tip.style.left = x + "px"; tip.style.top = y + "px";
+      });
+      tr.addEventListener("mouseleave", function(){ tip.classList.remove("show") });
+    });
+  })();
+
+  document.getElementById("t_sku").innerHTML = D.sku.map(function(r){
+    /* mỗi ô = một pallet của chính SKU đó; ô cam là phần lẻ còn thừa */
+    var ratio = r[6]/r[7];           // cỡ đơn trung bình tính theo pallet
+    var cells;
+    if(ratio < 1){
+      // chưa tới một pallet — vẽ MỘT khay rộng để đọc được phần trăm
+      cells = "<span class='part wide'><em style='width:"+Math.max(1.5, ratio*100).toFixed(1)+"%'></em></span>";
+    }else{
+      var full = Math.floor(ratio), part = ratio - full;
+      cells = "";
+      for(var i=0;i<Math.min(6,full);i++) cells += "<span><em style='width:100%'></em></span>";
+      if(part > 0.01) cells += "<span class='part'><em style='width:"+Math.max(8,part*100).toFixed(0)+"%'></em></span>";
+    }
+    var label = ratio >= 1 ? dec(ratio,1)+" pallet" : pct(ratio*100,1)+" pallet";
+    return "<tr><td class='sku'>"+r[0]+"</td><td class='nm'>"+r[1]+"</td>"+
+      "<td class='r'><b>"+fmt(r[2])+"</b></td><td class='r'>"+fmt(r[3])+"</td>"+
+      "<td class='r'>"+pct(r[4])+"</td><td class='r'>"+fmt(r[5])+"</td>"+
+      "<td class='r'>"+dec(r[6],1)+"</td><td class='r'>"+r[7]+"</td>"+
+      "<td><div class='pal'>"+cells+"</div><div class='sku' style='margin-top:3px'>"+label+"</div></td></tr>";
+  }).join("");
+}
+
+document.getElementById("seg_sort").addEventListener("click", function(e){
+  var b = e.target.closest("button"); if(!b) return;
+  chainSort = b.dataset.k;
+  [].forEach.call(this.querySelectorAll("button"), function(x){ x.classList.toggle("on", x === b) });
+  veChain();
+});
+
+var btn = document.getElementById("tgl");
+btn.addEventListener("click", function(){
+  var d = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", d);
+  btn.textContent = d === "dark" ? "Sáng" : "Tối";
+  tables();   // chú giải 3×3 lấy màu theo theme nên phải vẽ lại
+  build();
+});
+window.addEventListener("resize", function(){
+  Object.keys(charts).forEach(function(k){ charts[k].resize() });
+});
+
+tables();
+build();
+</script>
+</body>
+</html>
